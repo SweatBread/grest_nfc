@@ -64,21 +64,17 @@ Questo modulo è l'interfaccia utente web con persistenza offline.
 
 ## 🏃‍♂️ Come Avviare il Sistema
 
-Per far funzionare il tutto, dovrai avviare **contemporaneamente** i due servizi su due terminali separati.
+Per far funzionare il tutto, non hai più bisogno di due terminali separati! Grazie allo script centralizzato, ti basta un solo comando.
 
-**Terminale 1 (Lettore NFC):**
+Apri un terminale nella cartella principale (`Grest`) ed esegui:
 ```bash
-cd nfc-bridge
 npm start
 ```
-*Se tutto è corretto, vedrai nel terminale "WebSocket server in ascolto sulla porta 4000" e riceverai un messaggio testuale non appena il lettore viene rilevato tramite USB.*
 
-**Terminale 2 (Interfaccia Web):**
-```bash
-cd dashboard
-npm run dev
-```
-*L'interfaccia si aprirà nel browser (di solito all'indirizzo `http://localhost:5173`). Il pallino "Stato Lettore" nella barra laterale diventerà **verde** per confermare la connessione avvenuta con successo tra il web browser e il servizio in background.*
+*Cosa succede ora:*
+1. Il terminale avvierà sia il **Bridge NFC** (con etichetta blu) che l'**Interfaccia Web** (con etichetta verde) contemporaneamente nello stesso pannello.
+2. L'interfaccia si aprirà nel browser (di solito all'indirizzo `http://localhost:5173`). 
+3. Il pallino "Stato Lettore" nella barra laterale diventerà **verde** per confermare la connessione avvenuta con successo.
 
 ### 🧪 Modalità Simulatore (Test Senza Hardware)
 Se non hai ancora il lettore ACR122U a disposizione, puoi simulare le timbrature via terminale:

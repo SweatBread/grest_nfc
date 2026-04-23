@@ -1,0 +1,11 @@
+{
+  "name": "grest-nfc",
+  "version": "1.0.0",
+  "description": "Sistema Check-In/Out NFC Grest",
+  "scripts": {
+    "start": "concurrently -n \"BRIDGE,WEB\" -c \"bgBlue.bold,bgGreen.bold\" \"npm start --prefix nfc-bridge\" \"npm run dev --prefix dashboard\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
