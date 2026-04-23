@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Sistema Check-In/Out NFC Grest",
   "scripts": {
-    "start": "concurrently -n \"BRIDGE,WEB\" -c \"bgBlue.bold,bgGreen.bold\" \"npm start --prefix nfc-bridge\" \"npm run dev --prefix dashboard\""
+    "start": "concurrently -n \"BRIDGE,WEB\" -c \"bgBlue.bold,bgGreen.bold\" \"npm start --prefix nfc-bridge\" \"npm run dev --prefix dashboard\"",
+    "simula": "concurrently -i --default-input-target 0 -n \"BRIDGE,SIMULA\" -c \"bgBlue.bold,bgGreen.bold\" \"npm run mock --prefix nfc-bridge\" \"npm run dev --prefix dashboard\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

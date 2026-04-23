@@ -1,4 +1,3 @@
-const { NFC } = require('nfc-pcsc');
 const { Server } = require('socket.io');
 const readline = require('readline');
 
@@ -7,11 +6,15 @@ const io = new Server(PORT, {
   cors: { origin: '*' }
 });
 
-const nfc = new NFC(); 
+const isMockForced = process.argv.includes('--mock');
+let mockMode = isMockForced;
 let activeReader = null;
-let mockMode = false;
+let nfc = null;
 
 console.log(`WebSocket server in ascolto sulla porta ${PORT}`);
+if (isMockForced) {
+  console.log(`[AVVISO] Avviato in modalità SOLO SIMULATORE (--mock). L'hardware NFC è stato disattivato.`);
+}
 
 io.on('connection', (socket) => {
   console.log(`[WebSocket] Client connesso: ${socket.id}`);
@@ -47,36 +50,45 @@ io.on('connection', (socket) => {
   });
 });
 
-nfc.on('reader', reader => {
-  console.log(`[NFC] Lettore rilevato: ${reader.reader.name}`);
-  activeReader = reader;
-  if (!mockMode) io.emit('reader_status', { connected: true, name: reader.reader.name });
+if (!isMockForced) {
+  try {
+    const { NFC } = require('nfc-pcsc');
+    nfc = new NFC();
 
-  reader.on('card', card => {
-    console.log(`[NFC] Carta rilevata, UID: ${card.uid}`);
-    if (!mockMode) io.emit('nfc_read', { uid: card.uid });
-  });
+    nfc.on('reader', reader => {
+      console.log(`[NFC] Lettore rilevato: ${reader.reader.name}`);
+      activeReader = reader;
+      if (!mockMode) io.emit('reader_status', { connected: true, name: reader.reader.name });
 
-  reader.on('card.off', card => {
-    console.log(`[NFC] Carta rimossa: ${card.uid}`);
-  });
+      reader.on('card', card => {
+        console.log(`[NFC] Carta rilevata, UID: ${card.uid}`);
+        if (!mockMode) io.emit('nfc_read', { uid: card.uid });
+      });
 
-  reader.on('error', err => {
-    console.error(`[NFC] Errore lettore:`, err);
-  });
+      reader.on('card.off', card => {
+        console.log(`[NFC] Carta rimossa: ${card.uid}`);
+      });
 
-  reader.on('end', () => {
-    console.log(`[NFC] Lettore disconnesso: ${reader.reader.name}`);
-    if (activeReader && activeReader.reader.name === reader.reader.name) {
-      activeReader = null;
-    }
-    if (!mockMode) io.emit('reader_status', { connected: false });
-  });
-});
+      reader.on('error', err => {
+        console.error(`[NFC] Errore lettore:`, err);
+      });
 
-nfc.on('error', err => {
-  console.error('[NFC] Errore generale NFC:', err.message);
-});
+      reader.on('end', () => {
+        console.log(`[NFC] Lettore disconnesso: ${reader.reader.name}`);
+        if (activeReader && activeReader.reader.name === reader.reader.name) {
+          activeReader = null;
+        }
+        if (!mockMode) io.emit('reader_status', { connected: false });
+      });
+    });
+
+    nfc.on('error', err => {
+      console.error('[NFC] Errore generale NFC:', err.message);
+    });
+  } catch (err) {
+    console.error("[NFC] Errore critico inizializzazione hardware:", err.message);
+  }
+}
 
 // --- Mock Mode ---
 const rl = readline.createInterface({
@@ -89,6 +101,10 @@ console.log('Premi "m" e poi INVIO per attivare/disattivare la MODALITÀ MOCK (s
 rl.on('line', (line) => {
   const input = line.trim();
   if (input.toLowerCase() === 'm') {
+    if (isMockForced) {
+      console.log("Sei già in modalità Solo Simulatore fissa.");
+      return;
+    }
     mockMode = !mockMode;
     console.log(`\n>>> MODALITÀ MOCK: ${mockMode ? 'ATTIVA' : 'DISATTIVA'}`);
     io.emit('reader_status', { 
