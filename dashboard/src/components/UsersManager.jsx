@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { db, collection, getDocs, addDoc, updateDoc, doc, query, where } from '../firebase';
 import { nfcService } from '../services/nfcService';
-import { Plus, Search, Tag, X, User as UserIcon, Edit2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Tag, X, User as UserIcon, Edit2, AlertCircle, BarChart2 } from 'lucide-react';
 
 export default function UsersManager() {
   const [users, setUsers] = useState([]);
@@ -181,9 +182,14 @@ export default function UsersManager() {
                   </span>
                 </td>
                 <td className="p-4 text-right">
-                  <button onClick={() => handleEdit(user)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Modifica Utente">
-                    <Edit2 size={18} />
-                  </button>
+                  <div className="flex justify-end space-x-2">
+                    <Link to={`/stats/${user.id}`} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Statistiche Utente">
+                      <BarChart2 size={18} />
+                    </Link>
+                    <button onClick={() => handleEdit(user)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Modifica Utente">
+                      <Edit2 size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -237,14 +243,29 @@ export default function UsersManager() {
                 
                 <div className="flex space-x-3">
                   <input type="text" readOnly placeholder="Nessun tag associato" value={formData.nfc_uid} className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 font-mono text-sm" />
-                  <button 
-                    type="button"
-                    onClick={() => setIsScanningNfc(!isScanningNfc)}
-                    className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center space-x-2 transition-colors ${isScanningNfc ? 'bg-blue-100 text-blue-700 border border-blue-200 animate-pulse' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'}`}
-                  >
-                    <Tag size={16} />
-                    <span>{isScanningNfc ? 'In ascolto...' : 'Associa Tag'}</span>
-                  </button>
+                  
+                  {formData.nfc_uid ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, nfc_uid: '' });
+                        setIsScanningNfc(false);
+                      }}
+                      className="px-4 py-2 rounded-lg font-medium text-sm flex items-center space-x-2 transition-colors bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                    >
+                      <X size={16} />
+                      <span>Scollega</span>
+                    </button>
+                  ) : (
+                    <button 
+                      type="button"
+                      onClick={() => setIsScanningNfc(!isScanningNfc)}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center space-x-2 transition-colors ${isScanningNfc ? 'bg-blue-100 text-blue-700 border border-blue-200 animate-pulse' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'}`}
+                    >
+                      <Tag size={16} />
+                      <span>{isScanningNfc ? 'In ascolto...' : 'Associa Tag'}</span>
+                    </button>
+                  )}
                 </div>
                 {isScanningNfc && <p className="text-xs text-blue-600">Avvicina un braccialetto al lettore USB...</p>}
               </div>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { nfcService } from '../services/nfcService';
 import { db, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit, doc, updateDoc } from '../firebase';
-import { LogIn, LogOut, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { LogIn, LogOut, AlertCircle, CheckCircle2, Users } from 'lucide-react';
+import { format, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function DashboardHome() {
   const [recentLogs, setRecentLogs] = useState([]);
+  const [presentCount, setPresentCount] = useState(0);
   const [notification, setNotification] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -21,6 +22,7 @@ export default function DashboardHome() {
 
     // Carica gli ultimi log all'avvio
     loadRecentLogs();
+    loadPresentCount();
 
     return () => {
       nfcService.removeListeners();
@@ -38,6 +40,31 @@ export default function DashboardHome() {
       setRecentLogs(logs);
     } catch (error) {
       console.error("Errore nel caricamento log:", error);
+    }
+  };
+
+  const loadPresentCount = async () => {
+    try {
+      const q = query(
+        collection(db, "timbrature"),
+        where("timestamp", ">=", startOfDay(new Date())),
+        orderBy("timestamp", "asc")
+      );
+      const querySnapshot = await getDocs(q);
+      const presenceMap = new Map();
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.utente_id) {
+          presenceMap.set(data.utente_id, data.tipo);
+        }
+      });
+      let count = 0;
+      presenceMap.forEach(tipo => {
+        if (tipo === 'ENTRATA') count++;
+      });
+      setPresentCount(count);
+    } catch (error) {
+      console.error("Errore calcolo presenti:", error);
     }
   };
 
@@ -84,6 +111,12 @@ export default function DashboardHome() {
       
       // Aggiorna la lista (il db locale è già aggiornato da addDoc)
       loadRecentLogs();
+      if (nextType === "ENTRATA") {
+        setPresentCount(prev => prev + 1);
+      } else {
+        setPresentCount(prev => Math.max(0, prev - 1));
+      }
+      setTimeout(loadPresentCount, 1000);
 
     } catch (error) {
       console.error("Errore durante il salvataggio:", error);
@@ -99,10 +132,19 @@ export default function DashboardHome() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
-      <header className="flex justify-between items-end mb-8">
+      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Pannello Controllo Accessi</h2>
           <p className="text-gray-500 mt-2">Avvicina il braccialetto al lettore per registrare l'entrata o l'uscita.</p>
+        </div>
+        <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
+          <div className="bg-blue-100 p-3 rounded-full text-blue-600">
+            <Users size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Presenti Ora</p>
+            <p className="text-2xl font-bold text-gray-900">{presentCount}</p>
+          </div>
         </div>
       </header>
 

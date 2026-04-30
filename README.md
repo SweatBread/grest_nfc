@@ -77,10 +77,14 @@ npm start
 3. Il pallino "Stato Lettore" nella barra laterale diventerà **verde** per confermare la connessione avvenuta con successo.
 
 ### 🧪 Modalità Simulatore (Test Senza Hardware)
-Se non hai ancora il lettore ACR122U a disposizione, puoi simulare le timbrature via terminale:
-1. Con l'`nfc-bridge` in esecuzione (Terminale 1), clicca all'interno della finestra del terminale.
-2. Digita la lettera `m` e premi **INVIO**. Questo attiverà la "Modalità Mock", e sulla dashboard lo stato passerà a "Simulatore".
-3. Digita un codice esadecimale a piacere (es. `041234567890AB`) e premi **INVIO** per far credere al sistema di aver appena letto quel braccialetto NFC.
+Se non hai ancora il lettore ACR122U a disposizione, puoi testare l'intero sistema in modalità simulazione avviandolo con questo comando dalla cartella principale (`Grest`):
+```bash
+npm run simula
+```
+Questo script avvierà sia la dashboard web che il bridge hardware forzando la "Modalità Mock".
+Per simulare una timbratura:
+1. Clicca all'interno della finestra del terminale.
+2. Digita un codice esadecimale a piacere (es. `041234567890AB`) e premi **INVIO** per far credere al sistema di aver appena letto quel braccialetto NFC sulla dashboard!
 
 ---
 

@@ -3,7 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { nfcService } from './services/nfcService';
 import DashboardHome from './components/DashboardHome';
 import UsersManager from './components/UsersManager';
-import { LayoutDashboard, Users, Activity } from 'lucide-react';
+import ExportData from './components/ExportData';
+import StatsDashboard from './components/StatsDashboard';
+import HoursReport from './components/HoursReport';
+import { LayoutDashboard, Users, FileDown, BarChart2, Clock } from 'lucide-react';
 
 function App() {
   const [readerStatus, setReaderStatus] = useState({ connected: false, name: null });
@@ -39,6 +42,18 @@ function App() {
               <Users size={20} />
               <span className="font-medium">Anagrafica Utenti</span>
             </Link>
+            <Link to="/hours" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <Clock size={20} />
+              <span className="font-medium">Riepilogo Ore</span>
+            </Link>
+            <Link to="/stats" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <BarChart2 size={20} />
+              <span className="font-medium">Statistiche</span>
+            </Link>
+            <Link to="/export" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <FileDown size={20} />
+              <span className="font-medium">Esporta Dati</span>
+            </Link>
           </nav>
           
           <div className="p-4 border-t bg-gray-50">
@@ -59,6 +74,10 @@ function App() {
           <Routes>
             <Route path="/" element={<DashboardHome />} />
             <Route path="/users" element={<UsersManager />} />
+            <Route path="/hours" element={<HoursReport />} />
+            <Route path="/stats" element={<StatsDashboard />} />
+            <Route path="/stats/:userId" element={<StatsDashboard />} />
+            <Route path="/export" element={<ExportData />} />
           </Routes>
         </main>
       </div>
