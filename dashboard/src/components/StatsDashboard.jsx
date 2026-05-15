@@ -95,7 +95,7 @@ export default function StatsDashboard() {
       let currentEntrata = null;
       day.logs.forEach(log => {
         if (log.tipo === 'ENTRATA') currentEntrata = log.time;
-        else if (log.tipo === 'USCITA' && currentEntrata) {
+        else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
           day.totalMs += (log.time.getTime() - currentEntrata.getTime());
           currentEntrata = null;
         }
@@ -162,7 +162,7 @@ export default function StatsDashboard() {
         let currentEntrata = null;
         logs.forEach(log => {
           if (log.tipo === 'ENTRATA') currentEntrata = log.time;
-          else if (log.tipo === 'USCITA' && currentEntrata) {
+          else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
             totalMs += (log.time.getTime() - currentEntrata.getTime());
             currentEntrata = null;
           }

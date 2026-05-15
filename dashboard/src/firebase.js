@@ -12,6 +12,7 @@ import {
   doc, 
   getDoc,
   serverTimestamp, 
+  Timestamp,
   orderBy, 
   limit 
 } from "firebase/firestore";
@@ -33,4 +34,4 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
-export { db, collection, getDocs, query, where, addDoc, updateDoc, doc, getDoc, serverTimestamp, orderBy, limit };
+export { db, collection, getDocs, query, where, addDoc, updateDoc, doc, getDoc, serverTimestamp, Timestamp, orderBy, limit };

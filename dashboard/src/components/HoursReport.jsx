@@ -61,7 +61,7 @@ export default function HoursReport() {
         dayRecord.logs.forEach(log => {
           if (log.tipo === 'ENTRATA') {
             currentEntrata = log.time;
-          } else if (log.tipo === 'USCITA' && currentEntrata) {
+          } else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
             totalMs += (log.time.getTime() - currentEntrata.getTime());
             currentEntrata = null;
           }
