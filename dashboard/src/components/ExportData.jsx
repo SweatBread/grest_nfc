@@ -26,13 +26,22 @@ export default function ExportData() {
         orderBy("timestamp", "asc")
       );
 
-      const querySnapshot = await getDocs(q);
+      const [querySnapshot, usersSnapshot] = await Promise.all([
+        getDocs(q),
+        getDocs(collection(db, "utenti"))
+      ]);
       
       if (querySnapshot.empty) {
         showNotification("Nessun dato trovato per il periodo selezionato.", "error");
         setIsLoading(false);
         return;
       }
+
+      // Mappa utenti per ID per avere nome e cognome separati
+      const usersMap = {};
+      usersSnapshot.forEach(doc => {
+        usersMap[doc.id] = doc.data();
+      });
 
       const data = [];
       const userDays = {};
@@ -70,7 +79,10 @@ export default function ExportData() {
       });
 
       const summaryData = [];
-      Object.values(userDays).forEach(dayRecord => {
+      const personalTotals = {}; // { utente_id: { nome, cognome, ruolo, totalHours } }
+
+      Object.entries(userDays).forEach(([key, dayRecord]) => {
+        const [utenteId] = key.split('_');
         let totalMs = 0;
         let currentEntrata = null;
 
@@ -78,7 +90,7 @@ export default function ExportData() {
         dayRecord.logs.forEach(log => {
           if (log.tipo === 'ENTRATA') {
             currentEntrata = log.time;
-          } else if (log.tipo === 'USCITA' && currentEntrata) {
+          } else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
             totalMs += (log.time.getTime() - currentEntrata.getTime());
             currentEntrata = null;
           }
@@ -98,13 +110,54 @@ export default function ExportData() {
           "Ore Decimali": parseFloat(totalHours.toFixed(2)),
           "Tempo Totale": labelOreMinuti
         });
+
+        // Accumula per il foglio "Totale Ore"
+        if (!personalTotals[utenteId]) {
+          const userObj = usersMap[utenteId];
+          let nome = '';
+          let cognome = '';
+          if (userObj) {
+            nome = userObj.nome || '';
+            cognome = userObj.cognome || '';
+          } else {
+            // Fallback splitting nome_completo
+            const parts = dayRecord.nome.split(' ');
+            nome = parts[0] || '';
+            cognome = parts.slice(1).join(' ') || '';
+          }
+
+          personalTotals[utenteId] = {
+            "Cognome": cognome,
+            "Nome": nome,
+            "Ruolo": dayRecord.ruolo,
+            "totalHours": 0
+          };
+        }
+        personalTotals[utenteId].totalHours += totalHours;
       });
 
-      // Creazione del file Excel con due fogli
+      // Mappa ed ordina alfabeticamente per cognome e poi per nome
+      const personalTotalsData = Object.values(personalTotals).map(p => ({
+        "Cognome": p.Cognome,
+        "Nome": p.Nome,
+        "Ruolo": p.Ruolo,
+        "Ore Totali": parseFloat(p.totalHours.toFixed(2))
+      }));
+
+      personalTotalsData.sort((a, b) => {
+        const surnameCompare = a.Cognome.localeCompare(b.Cognome);
+        if (surnameCompare !== 0) return surnameCompare;
+        return a.Nome.localeCompare(b.Nome);
+      });
+
+      // Creazione del file Excel con tre fogli
       const wb = XLSX.utils.book_new();
       
       const wsSummary = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, wsSummary, "Riepilogo Ore");
+
+      const wsTotals = XLSX.utils.json_to_sheet(personalTotalsData);
+      XLSX.utils.book_append_sheet(wb, wsTotals, "Totale Ore");
 
       const wsRaw = XLSX.utils.json_to_sheet(data);
       XLSX.utils.book_append_sheet(wb, wsRaw, "Log Timbrature");
@@ -185,7 +238,7 @@ export default function ExportData() {
       <div className="bg-blue-50 rounded-xl p-4 flex items-start space-x-3 text-blue-800 text-sm">
         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <p>
-          Il file Excel scaricato conterrà due fogli: <strong>Riepilogo Ore</strong> (con le ore di presenza totali calcolate giorno per giorno per ogni utente) e <strong>Log Timbrature</strong> (l'elenco grezzo di ogni singola entrata e uscita registrata).
+          Il file Excel scaricato conterrà tre fogli: <strong>Riepilogo Ore</strong> (con le ore di presenza giornaliere per utente), <strong>Totale Ore</strong> (con il totale cumulativo per persona con colonne separate per cognome e nome) e <strong>Log Timbrature</strong> (l'elenco grezzo di ogni transito).
         </p>
       </div>
     </div>
