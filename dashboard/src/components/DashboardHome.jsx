@@ -90,14 +90,33 @@ export default function DashboardHome() {
       const userDoc = userSnapshot.docs[0];
       const user = { id: userDoc.id, ...userDoc.data() };
 
-      // 2. Trova ultima timbratura
-      const logsQuery = query(collection(db, "timbrature"), where("utente_id", "==", user.id), orderBy("timestamp", "desc"), limit(1));
+      // 2. Trova ultima timbratura dell'utente (in memoria per evitare indici compositi)
+      const logsQuery = query(collection(db, "timbrature"), where("utente_id", "==", user.id));
       const logsSnapshot = await getDocs(logsQuery);
       
+      let lastLog = null;
+      logsSnapshot.forEach(doc => {
+        const logData = doc.data({ serverTimestamps: 'estimate' });
+        const logTime = logData.timestamp ? logData.timestamp.toMillis() : 0;
+        const lastLogTime = lastLog && lastLog.timestamp ? lastLog.timestamp.toMillis() : 0;
+        if (!lastLog || logTime > lastLogTime) {
+          lastLog = { ...logData, id: doc.id };
+        }
+      });
+      
       let nextType = "ENTRATA";
-      if (!logsSnapshot.empty) {
-        const lastLog = logsSnapshot.docs[0].data();
-        if (lastLog.tipo === "ENTRATA") {
+      if (lastLog && lastLog.timestamp) {
+        const lastLogDate = lastLog.timestamp.toDate();
+        const todayDate = new Date();
+        
+        const isSameDay = 
+          lastLogDate.getDate() === todayDate.getDate() &&
+          lastLogDate.getMonth() === todayDate.getMonth() &&
+          lastLogDate.getFullYear() === todayDate.getFullYear();
+        
+        // Se l'ultimo transito è avvenuto OGGI ed era un'ENTRATA, allora questo sarà un'USCITA.
+        // Se l'ultimo transito è di un giorno precedente, la prima timbratura del giorno è sempre ENTRATA.
+        if (isSameDay && lastLog.tipo === "ENTRATA") {
           nextType = "USCITA";
         }
       }
