@@ -19,6 +19,7 @@ export default function StatsDashboard() {
   const [dailyData, setDailyData] = useState([]);
   const [roleData, setRoleData] = useState([]);
   const [roleAvgData, setRoleAvgData] = useState([]);
+  const [roleWeeklyAvgData, setRoleWeeklyAvgData] = useState([]);
   const [kpiData, setKpiData] = useState({ totalHours: 0, avgHours: 0, totalDays: 0 });
   const [individualDays, setIndividualDays] = useState({});
 
@@ -39,6 +40,7 @@ export default function StatsDashboard() {
           setUserData({ id: userSnap.id, ...userSnap.data() });
         }
         setRoleAvgData([]);
+        setRoleWeeklyAvgData([]);
       } else {
         setUserData(null);
         setIndividualDays({});
@@ -210,14 +212,30 @@ export default function StatsDashboard() {
     }));
     setDailyData(dailyChart);
 
-    // Processa dati ruoli (ore totali e media giornaliera per ruolo)
+    // Processa dati ruoli (ore totali, media giornaliera e media settimanale per ruolo)
     const roleChart = [];
     const rolesAvgChart = [];
+    const rolesWeeklyAvgChart = [];
     Object.entries(rolesMap).forEach(([ruolo, record]) => {
       let totalMs = 0;
       const dailyHoursArray = [];
+      const userWeeksHours = {}; // { 'userId_weekKey': totalMs }
 
-      Object.values(record.userDays).forEach(logs => {
+      Object.entries(record.userDays).forEach(([userDateKey, logs]) => {
+        const [userId, dateStr] = userDateKey.split('_');
+
+        // Determina la settimana (lunedì) per questa data
+        const jsDate = logs[0]?.time || new Date(dateStr);
+        const dayOfWeek = jsDate.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = new Date(jsDate);
+        monday.setDate(jsDate.getDate() + diffToMonday);
+        monday.setHours(0, 0, 0, 0);
+        const weekKey = format(monday, 'yyyy-MM-dd');
+
+        const userWeekKey = `${userId}_${weekKey}`;
+        if (!userWeeksHours[userWeekKey]) userWeeksHours[userWeekKey] = 0;
+
         let dailyMs = 0;
         let currentEntrata = null;
         logs.forEach(log => {
@@ -226,6 +244,7 @@ export default function StatsDashboard() {
             const diff = log.time.getTime() - currentEntrata.getTime();
             totalMs += diff;
             dailyMs += diff;
+            userWeeksHours[userWeekKey] += diff;
             currentEntrata = null;
           }
         });
@@ -243,15 +262,26 @@ export default function StatsDashboard() {
 
       // Calcola media ore al giorno per singolo animatore di questo ruolo
       const totalWorkedDays = dailyHoursArray.length;
-      const sumHours = dailyHoursArray.reduce((sum, h) => sum + h, 0);
-      const avgDailyHours = totalWorkedDays > 0 ? parseFloat((sumHours / totalWorkedDays).toFixed(1)) : 0;
+      const sumDailyHours = dailyHoursArray.reduce((sum, h) => sum + h, 0);
+      const avgDailyHours = totalWorkedDays > 0 ? parseFloat((sumDailyHours / totalWorkedDays).toFixed(1)) : 0;
       
       if (avgDailyHours > 0) {
         rolesAvgChart.push({ name: ruolo, media: avgDailyHours });
       }
+
+      // Calcola media ore alla settimana per singolo animatore di questo ruolo
+      const userWeeksHoursArray = Object.values(userWeeksHours).map(ms => ms / (1000 * 60 * 60));
+      const activeUserWeeksCount = userWeeksHoursArray.filter(h => h > 0).length;
+      const sumWeeklyHours = userWeeksHoursArray.reduce((sum, h) => sum + h, 0);
+      const avgWeeklyHours = activeUserWeeksCount > 0 ? parseFloat((sumWeeklyHours / activeUserWeeksCount).toFixed(1)) : 0;
+
+      if (avgWeeklyHours > 0) {
+        rolesWeeklyAvgChart.push({ name: ruolo, media: avgWeeklyHours });
+      }
     });
     setRoleData(roleChart);
     setRoleAvgData(rolesAvgChart);
+    setRoleWeeklyAvgData(rolesWeeklyAvgChart);
   };
 
   const getContributionData = () => {
@@ -629,32 +659,62 @@ export default function StatsDashboard() {
           </div>
         )}
 
-        {/* Global Only: Average Hours per Role Chart */}
+        {/* Global Only: Averages per Role Charts Row */}
         {!userId && (
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-3">
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Media Ore Lavorate per Ruolo</h3>
-            <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={roleAvgData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
-                  <Tooltip 
-                    cursor={{fill: '#f3f4f6'}}
-                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                    formatter={(value) => [`${value} ore`, 'Media Giornaliera']}
-                  />
-                  <Bar dataKey="media" radius={[4, 4, 0, 0]}>
-                    {roleAvgData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:col-span-3">
+            {/* Daily Average Chart */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800 mb-6">Media Ore Giornaliere per Ruolo</h3>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={roleAvgData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                    <Tooltip 
+                      cursor={{fill: '#f3f4f6'}}
+                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      formatter={(value) => [`${value} ore`, 'Media Giornaliera']}
+                    />
+                    <Bar dataKey="media" radius={[4, 4, 0, 0]}>
+                      {roleAvgData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {roleAvgData.length === 0 && (
+                <div className="text-center text-gray-500 mt-4">Nessun dato disponibile.</div>
+              )}
             </div>
-            {roleAvgData.length === 0 && (
-              <div className="text-center text-gray-500 mt-4">Nessun dato disponibile.</div>
-            )}
+
+            {/* Weekly Average Chart */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800 mb-6">Media Ore Settimanali per Ruolo</h3>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={roleWeeklyAvgData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                    <Tooltip 
+                      cursor={{fill: '#f3f4f6'}}
+                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      formatter={(value) => [`${value} ore`, 'Media Settimanale']}
+                    />
+                    <Bar dataKey="media" radius={[4, 4, 0, 0]}>
+                      {roleWeeklyAvgData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {roleWeeklyAvgData.length === 0 && (
+                <div className="text-center text-gray-500 mt-4">Nessun dato disponibile.</div>
+              )}
+            </div>
           </div>
         )}
 
