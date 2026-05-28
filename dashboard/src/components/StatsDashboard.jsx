@@ -210,42 +210,44 @@ export default function StatsDashboard() {
     }));
     setDailyData(dailyChart);
 
-    // Processa dati ruoli (ore totali e medie per ruolo)
+    // Processa dati ruoli (ore totali e media giornaliera per ruolo)
     const roleChart = [];
     const rolesAvgChart = [];
     Object.entries(rolesMap).forEach(([ruolo, record]) => {
       let totalMs = 0;
-      const userMs = {}; // { utente_id: totalMs }
+      const dailyHoursArray = [];
 
-      Object.entries(record.userDays).forEach(([userDateKey, logs]) => {
-        const [userId] = userDateKey.split('_');
-        if (!userMs[userId]) userMs[userId] = 0;
-
+      Object.values(record.userDays).forEach(logs => {
+        let dailyMs = 0;
         let currentEntrata = null;
         logs.forEach(log => {
           if (log.tipo === 'ENTRATA') currentEntrata = log.time;
           else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
             const diff = log.time.getTime() - currentEntrata.getTime();
             totalMs += diff;
-            userMs[userId] += diff;
+            dailyMs += diff;
             currentEntrata = null;
           }
         });
+        const dailyHours = dailyMs / (1000 * 60 * 60);
+        if (dailyHours > 0) {
+          dailyHoursArray.push(dailyHours);
+        }
       });
 
+      // Totale ore erogate dal ruolo
       const hours = totalMs / (1000 * 60 * 60);
       if (hours > 0) {
         roleChart.push({ name: ruolo, ore: parseFloat(hours.toFixed(1)) });
       }
 
-      // Calcola media ore per utente di questo ruolo
-      const userHoursArray = Object.values(userMs).map(ms => ms / (1000 * 60 * 60));
-      const activeUserCount = userHoursArray.length;
-      const sumHours = userHoursArray.reduce((sum, h) => sum + h, 0);
-      const avgHours = activeUserCount > 0 ? parseFloat((sumHours / activeUserCount).toFixed(1)) : 0;
+      // Calcola media ore al giorno per singolo animatore di questo ruolo
+      const totalWorkedDays = dailyHoursArray.length;
+      const sumHours = dailyHoursArray.reduce((sum, h) => sum + h, 0);
+      const avgDailyHours = totalWorkedDays > 0 ? parseFloat((sumHours / totalWorkedDays).toFixed(1)) : 0;
       
-      if (avgHours > 0) {
-        rolesAvgChart.push({ name: ruolo, media: avgHours });
+      if (avgDailyHours > 0) {
+        rolesAvgChart.push({ name: ruolo, media: avgDailyHours });
       }
     });
     setRoleData(roleChart);
@@ -640,7 +642,7 @@ export default function StatsDashboard() {
                   <Tooltip 
                     cursor={{fill: '#f3f4f6'}}
                     contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                    formatter={(value) => [`${value} ore`, 'Media per Animatore']}
+                    formatter={(value) => [`${value} ore`, 'Media Giornaliera']}
                   />
                   <Bar dataKey="media" radius={[4, 4, 0, 0]}>
                     {roleAvgData.map((entry, index) => (
