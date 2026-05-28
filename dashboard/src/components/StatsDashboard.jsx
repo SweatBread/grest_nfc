@@ -18,6 +18,7 @@ export default function StatsDashboard() {
   // Dati per i grafici
   const [dailyData, setDailyData] = useState([]);
   const [roleData, setRoleData] = useState([]);
+  const [roleAvgData, setRoleAvgData] = useState([]);
   const [kpiData, setKpiData] = useState({ totalHours: 0, avgHours: 0, totalDays: 0 });
   const [individualDays, setIndividualDays] = useState({});
 
@@ -37,6 +38,7 @@ export default function StatsDashboard() {
         if (userSnap.exists()) {
           setUserData({ id: userSnap.id, ...userSnap.data() });
         }
+        setRoleAvgData([]);
       } else {
         setUserData(null);
         setIndividualDays({});
@@ -208,26 +210,46 @@ export default function StatsDashboard() {
     }));
     setDailyData(dailyChart);
 
-    // Processa dati ruoli (ore totali per ruolo)
+    // Processa dati ruoli (ore totali e medie per ruolo)
     const roleChart = [];
+    const rolesAvgChart = [];
     Object.entries(rolesMap).forEach(([ruolo, record]) => {
       let totalMs = 0;
-      Object.values(record.userDays).forEach(logs => {
+      const userMs = {}; // { utente_id: totalMs }
+
+      Object.entries(record.userDays).forEach(([userDateKey, logs]) => {
+        const [userId] = userDateKey.split('_');
+        if (!userMs[userId]) userMs[userId] = 0;
+
         let currentEntrata = null;
         logs.forEach(log => {
           if (log.tipo === 'ENTRATA') currentEntrata = log.time;
           else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
-            totalMs += (log.time.getTime() - currentEntrata.getTime());
+            const diff = log.time.getTime() - currentEntrata.getTime();
+            totalMs += diff;
+            userMs[userId] += diff;
             currentEntrata = null;
           }
         });
       });
+
       const hours = totalMs / (1000 * 60 * 60);
       if (hours > 0) {
         roleChart.push({ name: ruolo, ore: parseFloat(hours.toFixed(1)) });
       }
+
+      // Calcola media ore per utente di questo ruolo
+      const userHoursArray = Object.values(userMs).map(ms => ms / (1000 * 60 * 60));
+      const activeUserCount = userHoursArray.length;
+      const sumHours = userHoursArray.reduce((sum, h) => sum + h, 0);
+      const avgHours = activeUserCount > 0 ? parseFloat((sumHours / activeUserCount).toFixed(1)) : 0;
+      
+      if (avgHours > 0) {
+        rolesAvgChart.push({ name: ruolo, media: avgHours });
+      }
     });
     setRoleData(roleChart);
+    setRoleAvgData(rolesAvgChart);
   };
 
   const getContributionData = () => {
@@ -601,6 +623,35 @@ export default function StatsDashboard() {
             </div>
             {roleData.length === 0 && (
               <div className="text-center text-gray-500 mt-4">Nessun dato ruoli disponibile.</div>
+            )}
+          </div>
+        )}
+
+        {/* Global Only: Average Hours per Role Chart */}
+        {!userId && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-3">
+            <h3 className="text-lg font-bold text-gray-800 mb-6">Media Ore Lavorate per Ruolo</h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={roleAvgData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                  <Tooltip 
+                    cursor={{fill: '#f3f4f6'}}
+                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                    formatter={(value) => [`${value} ore`, 'Media per Animatore']}
+                  />
+                  <Bar dataKey="media" radius={[4, 4, 0, 0]}>
+                    {roleAvgData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {roleAvgData.length === 0 && (
+              <div className="text-center text-gray-500 mt-4">Nessun dato disponibile.</div>
             )}
           </div>
         )}
