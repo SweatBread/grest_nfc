@@ -42,7 +42,7 @@ export default function DashboardHome() {
       const querySnapshot = await getDocs(q);
       const logs = [];
       querySnapshot.forEach((doc) => {
-        logs.push({ id: doc.id, ...doc.data() });
+        logs.push({ id: doc.id, ...doc.data({ serverTimestamps: 'estimate' }) });
       });
       setRecentLogs(logs);
     } catch (error) {
@@ -60,7 +60,7 @@ export default function DashboardHome() {
       const querySnapshot = await getDocs(q);
       const presenceMap = new Map();
       querySnapshot.forEach(doc => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         if (data.utente_id) {
           presenceMap.set(data.utente_id, data.tipo);
         }

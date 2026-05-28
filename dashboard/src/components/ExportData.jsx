@@ -38,7 +38,7 @@ export default function ExportData() {
       const userDays = {};
 
       querySnapshot.forEach((doc) => {
-        const row = doc.data();
+        const row = doc.data({ serverTimestamps: 'estimate' });
         if (!row.timestamp) return;
 
         const jsDate = row.timestamp.toDate();

@@ -93,3 +93,11 @@ Per simulare una timbratura:
 - **Offline-First**: La dashboard web utilizza il database interno del browser (`IndexedDB`). Se la connessione Wi-Fi dovesse interrompersi temporaneamente, puoi continuare a timbrare tranquillamente. Le timbrature verranno salvate in memoria e spinte su Firebase non appena la connessione tornerà disponibile.
 - **Associazione Staff**: Entra nella sezione "Anagrafica Utenti", clicca su "Nuovo Utente" e compila i dati. Poi clicca su "Associa Tag" e avvicina un nuovo braccialetto al lettore: il sistema ne capterà l'UID e lo legherà istantaneamente all'animatore.
 - **Timbratura Entrata/Uscita**: Lasciando aperta la schermata "Dashboard", chiunque appoggi il braccialetto sul lettore ACR122U verrà riconosciuto e registrato. Il sistema calcola in autonomia se si tratta di un'entrata o di un'uscita valutando lo stato precedente, e fa emettere al lettore un bip acustico in caso di successo.
+
+---
+
+## 📖 Specifiche Tecniche e Architettura
+
+Per una descrizione dettagliata del database utilizzato (Firestore), dello schema delle collezioni, delle API WebSocket e del funzionamento a basso livello dell'hardware NFC, consulta il documento dedicato:
+*   [Specifiche Tecniche](file:///c:/Users/Fantin%20Jacopo/Desktop/Grest/SPECIFICHE_TECNICHE.md)
+

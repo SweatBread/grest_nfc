@@ -79,7 +79,7 @@ export default function StatsDashboard() {
     let daysCount = 0;
 
     snapshot.forEach(doc => {
-      const data = doc.data();
+      const data = doc.data({ serverTimestamps: 'estimate' });
       if (!data.timestamp) return;
 
       const jsDate = data.timestamp.toDate();
@@ -123,7 +123,7 @@ export default function StatsDashboard() {
     const rolesMap = {};
 
     snapshot.forEach(doc => {
-      const data = doc.data();
+      const data = doc.data({ serverTimestamps: 'estimate' });
       if (!data.timestamp || !data.utente_id) return;
 
       const jsDate = data.timestamp.toDate();

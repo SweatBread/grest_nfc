@@ -29,7 +29,7 @@ export default function HoursReport() {
       const userDays = {};
 
       querySnapshot.forEach((doc) => {
-        const row = doc.data();
+        const row = doc.data({ serverTimestamps: 'estimate' });
         if (!row.timestamp || !row.utente_id) return;
 
         const jsDate = row.timestamp.toDate();
