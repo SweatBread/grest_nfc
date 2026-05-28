@@ -613,7 +613,7 @@ export default function StatsDashboard() {
           <h3 className="text-lg font-bold text-gray-800 mb-2">Calendario Presenze</h3>
           <p className="text-sm text-gray-500 mb-6">Visualizzazione giornaliera delle ore lavorate (Ultime 16 settimane)</p>
           
-          <div className="overflow-x-auto pb-2">
+          <div className="overflow-x-auto pb-2 select-none">
             <div className="flex min-w-[700px] items-start space-x-2">
               {/* Day Labels Column */}
               <div className="flex flex-col gap-[4px] text-[10px] text-gray-400 font-medium">
