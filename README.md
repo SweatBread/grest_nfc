@@ -58,7 +58,11 @@ Questo modulo è l'interfaccia utente web con persistenza offline.
    - Vai sul sito di [Firebase Console](https://console.firebase.google.com/) e crea un progetto.
    - Crea un database **Firestore**.
    - Ottieni le chiavi di configurazione web andando nelle impostazioni del progetto.
-   - Apri il file `dashboard/src/firebase.js` e incolla le tue chiavi all'interno dell'oggetto `firebaseConfig`.
+   - Copia il file `.env.example` in un nuovo file chiamato `.env` (nella stessa cartella `dashboard/`):
+     ```bash
+     cp .env.example .env
+     ```
+   - Apri il file `.env` e incolla le chiavi del tuo progetto Firebase nei rispettivi campi.
 
 ---
 
