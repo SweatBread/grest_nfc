@@ -25,3 +25,6 @@ Thumbs.db
 .tmp/
 TODO.md
 
+# altro
+.obsidian/
+.vscode/
