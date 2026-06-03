@@ -523,9 +523,9 @@ export default function DashboardHome() {
 
       {/* Pagina di Benvenuto / Saluto a schermo intero temporanea */}
       {welcomeUser && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-white px-6 transition-all duration-500 animate-fadeIn">
+        <div className="fixed top-0 left-0 w-screen h-screen z-50 flex flex-col items-center justify-center text-white px-6 transition-all duration-500 animate-fadeIn">
           {/* Sfondo sfumato dinamico in base al tipo di transito */}
-          <div className={`absolute inset-0 bg-gradient-to-br ${welcomeUser.tipo === 'ENTRATA' ? 'from-blue-600 via-indigo-600 to-emerald-600' : 'from-orange-500 via-red-500 to-amber-600'} opacity-95`} />
+          <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br ${welcomeUser.tipo === 'ENTRATA' ? 'from-blue-600 via-indigo-600 to-emerald-600' : 'from-orange-500 via-red-500 to-amber-600'} opacity-95`} />
           
           <div className="relative z-10 flex flex-col items-center text-center space-y-6 max-w-2xl">
             {/* Icona animata (bounce) */}
