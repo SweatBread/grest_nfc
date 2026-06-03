@@ -1,15 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { nfcService } from './services/nfcService';
 import DashboardHome from './components/DashboardHome';
 import UsersManager from './components/UsersManager';
 import ExportData from './components/ExportData';
 import StatsDashboard from './components/StatsDashboard';
 import HoursReport from './components/HoursReport';
-import { LayoutDashboard, Users, FileDown, BarChart2, Clock } from 'lucide-react';
+import AdminGate from './components/AdminGate';
+import ChangePinModal from './components/ChangePinModal';
+import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2 } from 'lucide-react';
 
-function App() {
+function AdminRoute({ children, isAuthenticated, onUnlock }) {
+  if (!isAuthenticated) {
+    return <AdminGate onUnlock={onUnlock} />;
+  }
+  return children;
+}
+
+function AppContent() {
   const [readerStatus, setReaderStatus] = useState({ connected: false, name: null });
+  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('grest_admin_auth') === 'true');
+  const [showChangePin, setShowChangePin] = useState(false);
+  const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const setAdminAuth = (auth) => {
+    setIsAdmin(auth);
+    if (auth) {
+      sessionStorage.setItem('grest_admin_auth', 'true');
+    } else {
+      sessionStorage.removeItem('grest_admin_auth');
+    }
+  };
 
   useEffect(() => {
     nfcService.connect();
@@ -24,11 +46,16 @@ function App() {
     };
   }, []);
 
+  const handleLock = () => {
+    setAdminAuth(false);
+    navigate('/');
+  };
+
   return (
-    <Router>
-      <div className="flex h-screen bg-gray-100 font-sans">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white border-r shadow-sm flex flex-col">
+    <div className="flex h-screen bg-gray-100 font-sans">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r shadow-sm flex flex-col justify-between">
+        <div className="flex flex-col flex-1">
           <div className="p-6 border-b">
             <h1 className="text-2xl font-bold text-blue-600 tracking-tight">Grest NFC</h1>
             <p className="text-sm text-gray-500 mt-1">Gestione Presenze</p>
@@ -38,24 +65,58 @@ function App() {
               <LayoutDashboard size={20} />
               <span className="font-medium">Dashboard</span>
             </Link>
-            <Link to="/users" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
-              <Users size={20} />
-              <span className="font-medium">Anagrafica Utenti</span>
+            <Link to="/users" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <Users size={20} />
+                <span className="font-medium">Anagrafica Utenti</span>
+              </div>
+              {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
-            <Link to="/hours" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
-              <Clock size={20} />
-              <span className="font-medium">Riepilogo Ore</span>
+            <Link to="/hours" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <Clock size={20} />
+                <span className="font-medium">Riepilogo Ore</span>
+              </div>
+              {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
-            <Link to="/stats" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
-              <BarChart2 size={20} />
-              <span className="font-medium">Statistiche</span>
+            <Link to="/stats" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <BarChart2 size={20} />
+                <span className="font-medium">Statistiche</span>
+              </div>
+              {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
-            <Link to="/export" className="flex items-center space-x-3 text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
-              <FileDown size={20} />
-              <span className="font-medium">Esporta Dati</span>
+            <Link to="/export" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <FileDown size={20} />
+                <span className="font-medium">Esporta Dati</span>
+              </div>
+              {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
           </nav>
-          
+        </div>
+        
+        <div className="flex flex-col">
+          {/* Admin lock controls (visible only when authenticated) */}
+          {isAdmin && (
+            <div className="p-4 border-t bg-indigo-50/30 space-y-2">
+              <button
+                onClick={() => setShowChangePin(true)}
+                className="w-full flex items-center space-x-2 text-indigo-700 hover:bg-indigo-50 p-2.5 rounded-lg text-xs font-semibold transition-colors"
+              >
+                <KeyRound size={16} />
+                <span>Cambia PIN di Backup</span>
+              </button>
+              <button
+                onClick={handleLock}
+                className="w-full flex items-center space-x-2 text-red-600 hover:bg-red-50 p-2.5 rounded-lg text-xs font-semibold transition-colors border border-red-105"
+              >
+                <Unlock size={16} />
+                <span>Blocca Area Admin</span>
+              </button>
+            </div>
+          )}
+
           <div className="p-4 border-t bg-gray-50">
             <div className="flex items-center space-x-3">
               <div className={`w-3 h-3 rounded-full ${readerStatus.connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
@@ -67,20 +128,48 @@ function App() {
               </div>
             </div>
           </div>
-        </aside>
+        </div>
+      </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<DashboardHome />} />
-            <Route path="/users" element={<UsersManager />} />
-            <Route path="/hours" element={<HoursReport />} />
-            <Route path="/stats" element={<StatsDashboard />} />
-            <Route path="/stats/:userId" element={<StatsDashboard />} />
-            <Route path="/export" element={<ExportData />} />
-          </Routes>
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="/" element={<DashboardHome />} />
+          <Route path="/users" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><UsersManager /></AdminRoute>} />
+          <Route path="/hours" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><HoursReport /></AdminRoute>} />
+          <Route path="/stats" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
+          <Route path="/stats/:userId" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
+          <Route path="/export" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><ExportData /></AdminRoute>} />
+        </Routes>
+      </main>
+
+      {/* Modale Cambio PIN */}
+      {showChangePin && (
+        <ChangePinModal 
+          onClose={() => setShowChangePin(false)}
+          onSuccess={() => {
+            setShowChangePin(false);
+            setPinChangeSuccess(true);
+            setTimeout(() => setPinChangeSuccess(false), 3000);
+          }}
+        />
+      )}
+
+      {/* Banner Notifica Successo Cambio PIN */}
+      {pinChangeSuccess && (
+        <div className="fixed bottom-5 right-5 z-50 p-4 bg-green-100 text-green-800 border border-green-200 rounded-xl shadow-lg flex items-center space-x-3 animate-fadeIn">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <span className="font-semibold text-sm">PIN di backup aggiornato con successo!</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
