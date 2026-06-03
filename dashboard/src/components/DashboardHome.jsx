@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { nfcService } from '../services/nfcService';
 import { db, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit, doc, updateDoc, Timestamp } from '../firebase';
-import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock } from 'lucide-react';
+import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock, Loader2 } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -18,10 +18,38 @@ export default function DashboardHome() {
   const [editLogTime, setEditLogTime] = useState("");
   const [editLogType, setEditLogType] = useState("ENTRATA");
 
+  // Cooldown del lettore NFC per prevenire doppie timbrature
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownTimerRef = useRef(null);
+
+  const startCooldown = () => {
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    setCooldown(5);
+    cooldownTimerRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownTimerRef.current);
+          cooldownTimerRef.current = null;
+          nfcService.sendBeep('success'); // Beep finale per segnalare lettore pronto
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     // Escolta gli eventi NFC
     nfcService.onNfcRead(async ({ uid }) => {
-      if (isProcessing) return;
+      if (isProcessing || cooldown > 0) return;
       setIsProcessing(true);
       await processNfcScan(uid);
       setIsProcessing(false);
@@ -34,7 +62,7 @@ export default function DashboardHome() {
     return () => {
       nfcService.removeListeners();
     };
-  }, [isProcessing]);
+  }, [isProcessing, cooldown]);
 
   const loadRecentLogs = async () => {
     try {
@@ -134,6 +162,9 @@ export default function DashboardHome() {
       // 4. Feedback Successo Immediato
       showNotification(`${nextType}: ${user.nome} ${user.cognome}`, "success");
       nfcService.sendBeep('success');
+      
+      // Avvia il cooldown di 5 secondi prima della prossima lettura
+      startCooldown();
       
       // Aggiorna la lista (il db locale è già aggiornato da addDoc)
       loadRecentLogs();
@@ -280,6 +311,22 @@ export default function DashboardHome() {
         <div className={`p-4 rounded-xl shadow-md flex items-center space-x-3 transition-all transform duration-300 ${notification.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
           {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6 text-green-600" /> : <AlertCircle className="w-6 h-6 text-red-600" />}
           <span className="font-medium text-lg">{notification.message}</span>
+        </div>
+      )}
+
+      {/* Cooldown Timer Banner */}
+      {cooldown > 0 && (
+        <div className="p-4 rounded-xl shadow-md flex items-center justify-between transition-all transform duration-300 bg-blue-50 text-blue-800 border border-blue-200 animate-pulse">
+          <div className="flex items-center space-x-3">
+            <Loader2 className="animate-spin text-blue-600" size={24} />
+            <span className="font-medium text-lg">Lettore NFC temporaneamente in pausa...</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-semibold text-gray-500">Prossima lettura tra:</span>
+            <span className="font-bold text-2xl bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center">
+              {cooldown}
+            </span>
+          </div>
         </div>
       )}
 
