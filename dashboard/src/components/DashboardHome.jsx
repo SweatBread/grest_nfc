@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { nfcService } from '../services/nfcService';
 import { db, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit, doc, updateDoc, Timestamp } from '../firebase';
 import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock, Loader2 } from 'lucide-react';
@@ -521,9 +522,9 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* Pagina di Benvenuto / Saluto a schermo intero temporanea */}
-      {welcomeUser && (
-        <div className="fixed top-0 left-0 w-screen h-screen z-50 flex flex-col items-center justify-center text-white px-6 transition-all duration-500 animate-fadeIn">
+      {/* Pagina di Benvenuto / Saluto a schermo intero temporanea renderizzata tramite Portal sul body */}
+      {welcomeUser && createPortal(
+        <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex flex-col items-center justify-center text-white px-6 transition-all duration-500 animate-fadeIn">
           {/* Sfondo sfumato dinamico in base al tipo di transito */}
           <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br ${welcomeUser.tipo === 'ENTRATA' ? 'from-blue-600 via-indigo-600 to-emerald-600' : 'from-orange-500 via-red-500 to-amber-600'} opacity-95`} />
           
@@ -559,7 +560,8 @@ export default function DashboardHome() {
               Ritorno alla schermata di timbratura...
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
