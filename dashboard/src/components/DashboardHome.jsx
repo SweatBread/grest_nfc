@@ -22,6 +22,10 @@ export default function DashboardHome() {
   const [cooldown, setCooldown] = useState(0);
   const cooldownTimerRef = useRef(null);
 
+  // Stato e timer per la pagina di benvenuto/saluto a schermo intero
+  const [welcomeUser, setWelcomeUser] = useState(null);
+  const welcomeTimerRef = useRef(null);
+
   const startCooldown = () => {
     if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
     setCooldown(5);
@@ -40,9 +44,8 @@ export default function DashboardHome() {
 
   useEffect(() => {
     return () => {
-      if (cooldownTimerRef.current) {
-        clearInterval(cooldownTimerRef.current);
-      }
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+      if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
     };
   }, []);
 
@@ -162,6 +165,19 @@ export default function DashboardHome() {
       // 4. Feedback Successo Immediato
       showNotification(`${nextType}: ${user.nome} ${user.cognome}`, "success");
       nfcService.sendBeep('success');
+      
+      // Mostra la pagina di benvenuto/saluto a schermo intero per 3 secondi
+      if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+      setWelcomeUser({
+        nome: user.nome,
+        cognome: user.cognome,
+        ruolo: user.ruolo,
+        tipo: nextType
+      });
+      welcomeTimerRef.current = setTimeout(() => {
+        setWelcomeUser(null);
+        welcomeTimerRef.current = null;
+      }, 3000);
       
       // Avvia il cooldown di 5 secondi prima della prossima lettura
       startCooldown();
@@ -504,6 +520,47 @@ export default function DashboardHome() {
           </table>
         </div>
       </div>
+
+      {/* Pagina di Benvenuto / Saluto a schermo intero temporanea */}
+      {welcomeUser && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center text-white px-6 transition-all duration-500 animate-fadeIn">
+          {/* Sfondo sfumato dinamico in base al tipo di transito */}
+          <div className={`absolute inset-0 bg-gradient-to-br ${welcomeUser.tipo === 'ENTRATA' ? 'from-blue-600 via-indigo-600 to-emerald-600' : 'from-orange-500 via-red-500 to-amber-600'} opacity-95`} />
+          
+          <div className="relative z-10 flex flex-col items-center text-center space-y-6 max-w-2xl">
+            {/* Icona animata (bounce) */}
+            <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-2xl animate-bounce">
+              {welcomeUser.tipo === 'ENTRATA' ? (
+                <LogIn size={48} className="text-white" />
+              ) : (
+                <LogOut size={48} className="text-white" />
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-xl md:text-2xl font-medium tracking-wide text-white/80 uppercase">
+                {welcomeUser.tipo === 'ENTRATA' ? 'Ingresso Registrato' : 'Uscita Registrata'}
+              </p>
+              <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight drop-shadow-sm select-none">
+                {welcomeUser.tipo === 'ENTRATA' ? 'Benvenuto/a!' : 'Arrivederci!'}
+              </h1>
+            </div>
+            
+            <div className="bg-white/15 backdrop-blur-lg px-8 py-5 rounded-3xl border border-white/10 shadow-lg scale-100 transition-transform duration-300">
+              <p className="text-3xl md:text-5xl font-bold tracking-tight">
+                {welcomeUser.nome} {welcomeUser.cognome}
+              </p>
+              <p className="text-sm md:text-base font-semibold text-white/80 mt-2 capitalize bg-white/10 px-4 py-1.5 rounded-full inline-block">
+                Ruolo: {welcomeUser.ruolo || 'Staff'}
+              </p>
+            </div>
+            
+            <div className="text-sm font-medium text-white/50 animate-pulse mt-8">
+              Ritorno alla schermata di timbratura...
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
