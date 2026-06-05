@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db, collection, getDocs, addDoc, updateDoc, doc, query, where } from '../firebase';
+import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from '../firebase';
 import { nfcService } from '../services/nfcService';
-import { Plus, Search, Tag, X, User as UserIcon, Edit2, AlertCircle, BarChart2 } from 'lucide-react';
+import { Plus, Search, Tag, X, User as UserIcon, Edit2, Trash2, AlertCircle, BarChart2 } from 'lucide-react';
 
 export default function UsersManager() {
   const [users, setUsers] = useState([]);
@@ -99,6 +99,23 @@ export default function UsersManager() {
     setIsModalOpen(true);
   };
 
+  const handleDelete = async (userId) => {
+    setError(null);
+    if (window.confirm("Sei sicuro di voler eliminare definitivamente questo utente? Questa azione rimuoverà l'anagrafica e l'associazione NFC. Le timbrature passate rimarranno storicizzate.")) {
+      try {
+        await deleteDoc(doc(db, "utenti", userId));
+        loadUsers();
+      } catch (err) {
+        console.error("Errore durante l'eliminazione:", err);
+        if (err.message.includes("permissions") || err.message.includes("permission")) {
+          setError("Permessi negati: aggiorna le Regole di Sicurezza su Firebase per permettere l'eliminazione.");
+        } else {
+          setError("Impossibile eliminare l'utente. Riprova più tardi.");
+        }
+      }
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     `${u.nome} ${u.cognome}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -188,6 +205,9 @@ export default function UsersManager() {
                     </Link>
                     <button onClick={() => handleEdit(user)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Modifica Utente">
                       <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(user.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Elimina Utente">
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </td>
