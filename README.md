@@ -92,6 +92,35 @@ Per simulare una timbratura:
 
 ---
 
+### 💻 Esecuzione su Windows 7 (Modalità Compatibilità)
+Se devi far girare il sistema su un PC con **Windows 7** (o su macchine senza strumenti di compilazione C++), segui questa procedura:
+1. Installa **Node.js v14.21.3** sul computer Windows 7 (impostando `NODE_SKIP_PLATFORM_CHECK=1` per consentire l'avvio).
+2. Assicurati che sul computer sia installato un browser moderno come **Google Chrome v109** o **Firefox ESR v115** (le ultime versioni che supportano Windows 7). Non usare Internet Explorer.
+3. Assicurati che il frontend sia stato compilato in precedenza sulla tua macchina di sviluppo con `npm run build --prefix dashboard`.
+4. Avvia il server dalla cartella principale del progetto con il comando:
+   ```bash
+   npm run start:win7
+   ```
+   *Cosa succede:*
+   * Il sistema si avvia configurando il bypass del controllo della piattaforma.
+   * Rilevando l'assenza del driver nativo `nfc-pcsc`, Node.js avvierà automaticamente il bridge di compatibilità C# pre-compilato `nfc-reader-win7.exe` in background.
+   * Verrà avviato un server HTTP statico che renderà la dashboard disponibile all'indirizzo: 👉 **`http://localhost:3000`**
+
+---
+
+## 🧹 Reset del Database (Preparazione per Dati Reali)
+
+Quando sarai pronto per iniziare a registrare i dati reali del Grest e vorrai ripulire tutti i dati di test/simulazione accumulati sul database Firestore:
+1. Apri un terminale nella cartella principale del progetto.
+2. Esegui il comando:
+   ```bash
+   npm run reset-db
+   ```
+3. Il terminale mostrerà un prompt di sicurezza interattivo. Digita `s` (o `si`) e premi **INVIO** per confermare.
+4. Lo script eliminerà definitivamente tutti gli utenti e tutti i log delle timbrature da Firestore.
+
+---
+
 ## 💡 Utilizzo e Logica di Business
 
 - **Offline-First**: La dashboard web utilizza il database interno del browser (`IndexedDB`). Se la connessione Wi-Fi dovesse interrompersi temporaneamente, puoi continuare a timbrare tranquillamente. Le timbrature verranno salvate in memoria e spinte su Firebase non appena la connessione tornerà disponibile.
