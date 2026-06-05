@@ -6,7 +6,8 @@
     "start": "concurrently -n \"BRIDGE,WEB\" -c \"bgBlue.bold,bgGreen.bold\" \"npm start --prefix nfc-bridge\" \"npm run dev --prefix dashboard\"",
     "simula": "concurrently -i --default-input-target 0 -n \"BRIDGE,SIMULA\" -c \"bgBlue.bold,bgGreen.bold\" \"npm run mock --prefix nfc-bridge\" \"npm run dev --prefix dashboard\"",
     "start:prod": "node nfc-bridge/index.js",
-    "start:win7": "cmd /C \"set NODE_SKIP_PLATFORM_CHECK=1 && node nfc-bridge/index.js\""
+    "start:win7": "cmd /C \"set NODE_SKIP_PLATFORM_CHECK=1 && node nfc-bridge/index.js\"",
+    "reset-db": "npm run reset-db --prefix dashboard"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
