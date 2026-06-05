@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regole per la collezione utenti
+    match /utenti/{utenteId} {
+      allow read, write: if true;
+    }
+    
+    // Regole per la collezione timbrature
+    match /timbrature/{timbraturaId} {
+      allow read, write: if true;
+    }
+  }
+}
