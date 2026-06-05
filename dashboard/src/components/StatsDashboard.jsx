@@ -655,13 +655,6 @@ export default function StatsDashboard() {
       {/* Charts Area */}
       <div className={`grid grid-cols-1 ${!userId ? 'lg:grid-cols-3' : ''} gap-6`}>
         
-        {/* Grafico a Bolle Globale */}
-        {!userId && (
-          <div className="lg:col-span-3">
-            <BubbleChart data={individualHoursList} />
-          </div>
-        )}
-        
         {/* Main Trend Chart */}
         <div className={`bg-white p-6 rounded-2xl shadow-sm border border-gray-100 ${!userId ? 'lg:col-span-2' : ''}`}>
           <h3 className="text-lg font-bold text-gray-800 mb-6">
@@ -909,6 +902,10 @@ export default function StatsDashboard() {
         </div>
       )}
 
+      {/* Grafico a Bolle Globale */}
+      {!userId && (
+        <BubbleChart data={individualHoursList} />
+      )}
 
     </div>
   );
