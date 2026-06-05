@@ -6,6 +6,7 @@ import { it } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Loader2, ArrowLeft, Activity, Clock, CalendarDays, FileDown } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import BubbleChart from './BubbleChart';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -22,6 +23,7 @@ export default function StatsDashboard() {
   const [roleWeeklyAvgData, setRoleWeeklyAvgData] = useState([]);
   const [kpiData, setKpiData] = useState({ totalHours: 0, avgHours: 0, totalDays: 0 });
   const [individualDays, setIndividualDays] = useState({});
+  const [individualHoursList, setIndividualHoursList] = useState([]);
 
   useEffect(() => {
     loadStats();
@@ -44,6 +46,15 @@ export default function StatsDashboard() {
       } else {
         setUserData(null);
         setIndividualDays({});
+      }
+
+      // Se siamo in modalità globale, carichiamo anche l'anagrafica completa degli utenti
+      let allUsers = [];
+      if (!userId) {
+        const usersSnapshot = await getDocs(collection(db, "utenti"));
+        usersSnapshot.forEach(doc => {
+          allUsers.push({ id: doc.id, ...doc.data() });
+        });
       }
 
       // Query delle timbrature
@@ -69,7 +80,7 @@ export default function StatsDashboard() {
       if (userId) {
         processIndividualData(snapshot);
       } else {
-        processGlobalData(snapshot);
+        processGlobalData(snapshot, allUsers);
       }
 
     } catch (error) {
@@ -176,9 +187,22 @@ export default function StatsDashboard() {
     });
   };
 
-  const processGlobalData = (snapshot) => {
+  const processGlobalData = (snapshot, allUsers = []) => {
     const daysMap = {};
     const rolesMap = {};
+
+    // Mappa temporanea per calcolare le ore per singolo utente
+    const userHoursMap = {};
+    allUsers.forEach(u => {
+      userHoursMap[u.id] = {
+        id: u.id,
+        nome: u.nome,
+        cognome: u.cognome,
+        ruolo: u.ruolo || 'Animatore',
+        ore: 0,
+        logs: []
+      };
+    });
 
     snapshot.forEach(doc => {
       const data = doc.data({ serverTimestamps: 'estimate' });
@@ -203,7 +227,53 @@ export default function StatsDashboard() {
         rolesMap[ruolo].userDays[key] = [];
       }
       rolesMap[ruolo].userDays[key].push({ tipo: data.tipo, time: jsDate });
+
+      // Raccolta log per calcolo ore individuale (BubbleChart)
+      if (!userHoursMap[data.utente_id]) {
+        const parts = (data.nome_completo || 'Staff Sconosciuto').split(' ');
+        userHoursMap[data.utente_id] = {
+          id: data.utente_id,
+          nome: parts[0],
+          cognome: parts.slice(1).join(' '),
+          ruolo: ruolo,
+          ore: 0,
+          logs: []
+        };
+      }
+      userHoursMap[data.utente_id].logs.push({ tipo: data.tipo, time: jsDate });
     });
+
+    // Calcola le ore per singolo utente
+    Object.values(userHoursMap).forEach(user => {
+      user.logs.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+      let totalMs = 0;
+      let currentEntrata = null;
+      user.logs.forEach(log => {
+        if (log.tipo === 'ENTRATA') {
+          currentEntrata = log.time;
+        } else if ((log.tipo === 'USCITA' || log.tipo === 'USCITA_AUTOMATICA') && currentEntrata) {
+          totalMs += (log.time.getTime() - currentEntrata.getTime());
+          currentEntrata = null;
+        }
+      });
+      user.ore = totalMs / (1000 * 60 * 60);
+    });
+
+    // Genera la lista per il BubbleChart (filtriamo solo gli utenti non archiviati)
+    const bubblesList = Object.values(userHoursMap)
+      .filter(u => {
+        const dbUser = allUsers.find(du => du.id === u.id);
+        return !dbUser || dbUser.stato !== 'archiviato';
+      })
+      .map(u => ({
+        id: u.id,
+        nome: u.nome,
+        cognome: u.cognome,
+        ruolo: u.ruolo,
+        ore: u.ore
+      }));
+    setIndividualHoursList(bubblesList);
 
     // Processa grafico giornaliero (numero di presenti per giorno)
     const dailyChart = Object.values(daysMap).map(d => ({
@@ -584,6 +654,13 @@ export default function StatsDashboard() {
 
       {/* Charts Area */}
       <div className={`grid grid-cols-1 ${!userId ? 'lg:grid-cols-3' : ''} gap-6`}>
+        
+        {/* Grafico a Bolle Globale */}
+        {!userId && (
+          <div className="lg:col-span-3">
+            <BubbleChart data={individualHoursList} />
+          </div>
+        )}
         
         {/* Main Trend Chart */}
         <div className={`bg-white p-6 rounded-2xl shadow-sm border border-gray-100 ${!userId ? 'lg:col-span-2' : ''}`}>
