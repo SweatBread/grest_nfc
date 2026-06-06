@@ -35,7 +35,6 @@ export default function DashboardHome() {
         if (prev <= 1) {
           clearInterval(cooldownTimerRef.current);
           cooldownTimerRef.current = null;
-          nfcService.sendBeep('success'); // Beep finale per segnalare lettore pronto
           return 0;
         }
         return prev - 1;

@@ -119,7 +119,11 @@ io.on('connection', (socket) => {
         await activeReader.transmit(apdu, 40);
         console.log(`[NFC] Beep emesso (${reps} volte)`);
       } catch (err) {
-        console.error('[NFC] Errore emissione beep:', err);
+        if (err.code === 'card_not_connected' || (err.message && err.message.includes('No card'))) {
+          console.log(`[NFC] Errore emissione beep: nessuna carta sul lettore (Card not connected).`);
+        } else {
+          console.error('[NFC] Errore emissione beep:', err);
+        }
       }
     } else {
       console.log('[NFC] Nessun lettore connesso per il beep.');
