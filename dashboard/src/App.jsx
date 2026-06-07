@@ -10,7 +10,8 @@ import ControlloTimbrature from './components/ControlloTimbrature';
 import BackupRecovery from './components/BackupRecovery';
 import AdminGate from './components/AdminGate';
 import ChangePinModal from './components/ChangePinModal';
-import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2, ShieldAlert, Database } from 'lucide-react';
+import HelpGuide from './components/HelpGuide';
+import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2, ShieldAlert, Database, HelpCircle } from 'lucide-react';
 
 function AdminRoute({ children, isAuthenticated, onUnlock }) {
   if (!isAuthenticated) {
@@ -109,6 +110,12 @@ function AppContent() {
               </div>
               {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
+            <Link to="/help" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <HelpCircle size={20} className="text-blue-500" />
+                <span className="font-medium">Aiuto e Supporto</span>
+              </div>
+            </Link>
           </nav>
         </div>
         
@@ -158,6 +165,7 @@ function AppContent() {
           <Route path="/stats/:userId" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
           <Route path="/export" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><ExportData /></AdminRoute>} />
           <Route path="/backup" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><BackupRecovery /></AdminRoute>} />
+          <Route path="/help" element={<HelpGuide />} />
         </Routes>
       </main>
 
