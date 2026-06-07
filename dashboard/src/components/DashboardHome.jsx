@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { nfcService } from '../services/nfcService';
-import { db, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit, doc, updateDoc, Timestamp } from '../firebase';
-import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock, Loader2 } from 'lucide-react';
+import { db, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit, doc, updateDoc, deleteDoc, Timestamp } from '../firebase';
+import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock, Loader2, Trash2, Lock, KeyRound } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -12,12 +12,16 @@ export default function DashboardHome() {
   const [notification, setNotification] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Nuovi stati per Uscita Automatica e Modifica
+  // Nuovi stati per Uscita Automatica, Modifica, Eliminazione e PIN Prompt
   const [isClosingDay, setIsClosingDay] = useState(false);
   const [closeDayTime, setCloseDayTime] = useState("16:30");
   const [editingLog, setEditingLog] = useState(null);
   const [editLogTime, setEditLogTime] = useState("");
   const [editLogType, setEditLogType] = useState("ENTRATA");
+  const [pinPrompt, setPinPrompt] = useState(null); // { type: 'edit'|'delete', log: log }
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(null);
+  const [deletingLog, setDeletingLog] = useState(null);
 
   // Cooldown del lettore NFC per prevenire doppie timbrature
   const [cooldown, setCooldown] = useState(0);
@@ -294,6 +298,109 @@ export default function DashboardHome() {
     }
   };
 
+  const handleEditClick = (log) => {
+    if (sessionStorage.getItem('grest_admin_auth') === 'true') {
+      openEditModal(log);
+    } else {
+      setPinPrompt({ type: 'edit', log });
+    }
+  };
+
+  const handleDeleteClick = (log) => {
+    if (sessionStorage.getItem('grest_admin_auth') === 'true') {
+      setDeletingLog(log);
+    } else {
+      setPinPrompt({ type: 'delete', log });
+    }
+  };
+
+  const handlePinNumberClick = (num) => {
+    setPinError(null);
+    if (pinInput.length >= 4) return;
+    const newPin = pinInput + num;
+    setPinInput(newPin);
+
+    if (newPin.length === 4) {
+      const savedPin = localStorage.getItem('grest_admin_pin') || '1234';
+      if (newPin === savedPin) {
+        sessionStorage.setItem('grest_admin_auth', 'true');
+        const { type, log } = pinPrompt;
+        if (type === 'edit') {
+          openEditModal(log);
+        } else if (type === 'delete') {
+          setDeletingLog(log);
+        }
+        setPinPrompt(null);
+        setPinInput('');
+      } else {
+        setPinError("PIN errato. Riprova.");
+        setPinInput('');
+      }
+    }
+  };
+
+  const handlePinBackspace = () => {
+    setPinInput(prev => prev.slice(0, -1));
+  };
+
+  const handleDeleteLogConfirm = async () => {
+    if (!deletingLog) return;
+    try {
+      setIsProcessing(true);
+      await deleteDoc(doc(db, "timbrature", deletingLog.id));
+      setDeletingLog(null);
+      showNotification("Timbratura eliminata con successo.", "success");
+      loadRecentLogs();
+      loadPresentCount();
+    } catch (error) {
+      console.error("Errore eliminazione timbratura:", error);
+      showNotification("Errore durante l'eliminazione della timbratura.", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Gestione tastiera fisica per il prompt del PIN
+  useEffect(() => {
+    if (!pinPrompt) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        setPinError(null);
+        if (pinInput.length >= 4) return;
+        const newPin = pinInput + e.key;
+        setPinInput(newPin);
+
+        if (newPin.length === 4) {
+          const savedPin = localStorage.getItem('grest_admin_pin') || '1234';
+          if (newPin === savedPin) {
+            sessionStorage.setItem('grest_admin_auth', 'true');
+            const { type, log } = pinPrompt;
+            if (type === 'edit') {
+              openEditModal(log);
+            } else if (type === 'delete') {
+              setDeletingLog(log);
+            }
+            setPinPrompt(null);
+            setPinInput('');
+          } else {
+            setPinError("PIN errato. Riprova.");
+            setPinInput('');
+          }
+        }
+      } else if (e.key === 'Backspace') {
+        setPinInput(prev => prev.slice(0, -1));
+      } else if (e.key === 'Escape') {
+        setPinPrompt(null);
+        setPinInput('');
+        setPinError(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pinPrompt, pinInput]);
+
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
@@ -458,6 +565,144 @@ export default function DashboardHome() {
         </div>
       )}
 
+      {/* Modal Prompt PIN Autorizzazione */}
+      {pinPrompt && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden text-white p-6 flex flex-col items-center text-center space-y-6">
+            <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 shadow-lg">
+              <Lock size={22} className="text-indigo-400" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold tracking-tight">Autorizzazione Admin</h3>
+              <p className="text-slate-400 text-xs px-4">
+                Inserisci il PIN amministratore per {pinPrompt.type === 'edit' ? 'modificare' : 'eliminare'} la timbratura di <strong className="text-slate-200">{pinPrompt.log.nome_completo}</strong>
+              </p>
+            </div>
+
+            {/* Indicatori PIN (pallini) */}
+            <div className="flex space-x-4 my-2">
+              {[0, 1, 2, 3].map((index) => (
+                <div 
+                  key={index}
+                  className={`w-4 h-4 rounded-full border border-slate-700 transition-all duration-200 ${
+                    pinInput.length > index ? 'bg-indigo-500 border-indigo-400 scale-110 shadow-md shadow-indigo-500/30' : 'bg-slate-800'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Keypad */}
+            <div className="grid grid-cols-3 gap-2 max-w-[240px] w-full">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => handlePinNumberClick(num.toString())}
+                  className="w-16 h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 active:scale-95 text-xl font-bold rounded-full border border-slate-800 flex items-center justify-center transition-all duration-150"
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setPinPrompt(null);
+                  setPinInput('');
+                  setPinError(null);
+                }}
+                className="w-16 h-16 text-slate-400 hover:text-white text-xs font-semibold rounded-full flex items-center justify-center transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                key={0}
+                type="button"
+                onClick={() => handlePinNumberClick('0')}
+                className="w-16 h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 active:scale-95 text-xl font-bold rounded-full border border-slate-800 flex items-center justify-center transition-all duration-150"
+              >
+                0
+              </button>
+              <button
+                type="button"
+                onClick={handlePinBackspace}
+                disabled={pinInput.length === 0}
+                className="w-16 h-16 text-slate-400 disabled:opacity-30 rounded-full flex items-center justify-center transition-opacity"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Error Container */}
+            <div className="h-6 text-xs text-red-400 font-semibold">
+              {pinError && <span>{pinError}</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Conferma Eliminazione */}
+      {deletingLog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                <Trash2 className="text-red-500" size={20} />
+                <span>Elimina Timbratura</span>
+              </h3>
+              <button onClick={() => setDeletingLog(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-gray-600 text-sm">
+                Sei sicuro di voler eliminare definitivamente questa registrazione di transito?
+              </p>
+              
+              <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-2 text-sm text-red-800">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-red-900">Utente:</span>
+                  <span className="font-bold">{deletingLog.nome_completo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-red-900">Ruolo:</span>
+                  <span>{deletingLog.ruolo || 'N/D'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-red-900">Tipo Transito:</span>
+                  <span className="font-bold capitalize">{deletingLog.tipo?.toLowerCase()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-red-900">Data e Ora:</span>
+                  <span>
+                    {deletingLog.timestamp ? format(deletingLog.timestamp.toDate(), "dd/MM/yyyy - HH:mm:ss") : ''}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-red-500 italic">
+                * Questa azione è irreversibile e rimuoverà permanentemente la timbratura dal database.
+              </p>
+            </div>
+            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
+              <button 
+                onClick={() => setDeletingLog(null)}
+                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Annulla
+              </button>
+              <button 
+                onClick={handleDeleteLogConfirm}
+                disabled={isProcessing}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isProcessing ? 'Eliminazione...' : 'Conferma ed Elimina'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Log Recenti */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
@@ -511,13 +756,20 @@ export default function DashboardHome() {
                   <td className="p-4 text-gray-500 text-sm">
                     {log.timestamp ? format(log.timestamp.toDate(), "HH:mm:ss - dd MMM", { locale: it }) : 'Ora in caricamento...'}
                   </td>
-                  <td className="p-4 text-center">
+                  <td className="p-4 text-center space-x-1">
                     <button 
-                      onClick={() => openEditModal(log)}
+                      onClick={() => handleEditClick(log)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-block"
                       title="Modifica Timbratura"
                     >
                       <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteClick(log)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                      title="Elimina Timbratura"
+                    >
+                      <Trash2 size={16} />
                     </button>
                   </td>
                 </tr>
