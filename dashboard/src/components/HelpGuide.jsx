@@ -9,10 +9,8 @@ import {
   HelpCircle, 
   AlertCircle, 
   CheckCircle2, 
-  ArrowRight,
-  BookOpen,
-  Terminal,
-  FileSpreadsheet
+  ChevronRight,
+  FileDown
 } from 'lucide-react';
 
 export default function HelpGuide() {
@@ -33,7 +31,7 @@ export default function HelpGuide() {
       <header className="mb-8">
         <div className="flex items-center space-x-3">
           <div className="bg-blue-100 p-2.5 rounded-2xl text-blue-600">
-            <BookOpen size={28} />
+            <HelpCircle size={28} />
           </div>
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Guida & Supporto</h2>
@@ -85,7 +83,7 @@ export default function HelpGuide() {
 
               <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 space-y-3">
                 <h4 className="font-bold text-blue-900 text-sm flex items-center space-x-1.5">
-                  <Terminal size={16} />
+                  <Clock size={16} />
                   <span>Come effettuare una Scansione:</span>
                 </h4>
                 <ol className="list-decimal pl-5 text-gray-700 text-xs space-y-2">
@@ -200,7 +198,7 @@ export default function HelpGuide() {
 
               <div className="space-y-3 pt-2">
                 <h4 className="font-bold text-gray-800 text-sm flex items-center space-x-1">
-                  <FileSpreadsheet size={16} className="text-emerald-600" />
+                  <FileDown size={16} className="text-emerald-600" />
                   <span>Esportazione dei Report:</span>
                 </h4>
                 <p className="text-gray-650 text-xs leading-relaxed">
