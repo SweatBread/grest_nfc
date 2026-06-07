@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { db, collection, getDocs, doc, setDoc, deleteDoc, Timestamp } from '../firebase';
 import { format } from 'date-fns';
-import { Download, Upload, AlertCircle, CheckCircle2, Loader2, Database, FileJson, AlertTriangle } from 'lucide-react';
+import { Download, Upload, AlertCircle, CheckCircle2, Loader2, Database, FileJson, AlertTriangle, X } from 'lucide-react';
 
 export default function BackupRecovery() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +17,11 @@ export default function BackupRecovery() {
   // Opzioni di ripristino
   const [confirmText, setConfirmText] = useState('');
   const [wipeFirst, setWipeFirst] = useState(false);
+
+  // Cancellazione database e reset
+  const [deleteTarget, setDeleteTarget] = useState(null); // 'timbrature' o 'all'
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [backupDownloaded, setBackupDownloaded] = useState(false);
   
   const fileInputRef = useRef(null);
 
@@ -208,6 +213,52 @@ export default function BackupRecovery() {
     } catch (error) {
       console.error("Errore durante il ripristino:", error);
       showNotification("Errore critico durante il ripristino del database.", "error");
+    } finally {
+      setIsProcessing(false);
+      setProgress('');
+    }
+  };
+
+  const openDeleteModal = (target) => {
+    setDeleteTarget(target);
+    setDeleteConfirmText('');
+    setBackupDownloaded(false);
+  };
+
+  const handleExecuteDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      setIsProcessing(true);
+      
+      if (deleteTarget === 'timbrature') {
+        setProgress('Eliminazione timbrature in corso...');
+        const timbratureSnap = await getDocs(collection(db, "timbrature"));
+        for (const docSnap of timbratureSnap.docs) {
+          await deleteDoc(doc(db, "timbrature", docSnap.id));
+        }
+        showNotification("Storico timbrature svuotato con successo!", "success");
+      } else if (deleteTarget === 'all') {
+        setProgress('Reset completo: eliminazione utenti...');
+        const utentiSnap = await getDocs(collection(db, "utenti"));
+        for (const docSnap of utentiSnap.docs) {
+          await deleteDoc(doc(db, "utenti", docSnap.id));
+        }
+
+        setProgress('Reset completo: eliminazione timbrature...');
+        const timbratureSnap = await getDocs(collection(db, "timbrature"));
+        for (const docSnap of timbratureSnap.docs) {
+          await deleteDoc(doc(db, "timbrature", docSnap.id));
+        }
+        showNotification("Database resettato con successo!", "success");
+      }
+
+      setDeleteTarget(null);
+      setDeleteConfirmText('');
+      setBackupDownloaded(false);
+    } catch (error) {
+      console.error("Errore durante la cancellazione:", error);
+      showNotification("Impossibile completare la cancellazione dei dati.", "error");
     } finally {
       setIsProcessing(false);
       setProgress('');
@@ -417,6 +468,141 @@ export default function BackupRecovery() {
           )}
         </div>
       </div>
+
+      {/* DANGER ZONE */}
+      <div className="bg-red-50/50 border border-red-200 rounded-2xl p-6 space-y-4 shadow-sm">
+        <div className="flex items-center space-x-3 text-red-700 font-bold text-xl">
+          <AlertTriangle size={24} />
+          <span>Zona di Pericolo (Cancellazione Dati)</span>
+        </div>
+        <p className="text-gray-600 text-sm leading-relaxed">
+          Le seguenti azioni sono <strong>irreversibili</strong> e comportano la perdita definitiva dei dati. Usale con estrema cautela.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <div className="border border-red-100 rounded-xl p-4 flex flex-col justify-between space-y-4 bg-white/50">
+            <div>
+              <h4 className="font-bold text-red-950 text-sm">Svuota lo storico delle timbrature</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                Cancella tutti i log di ingresso e uscita registrati nel database. L'anagrafica degli utenti rimarrà intatta.
+              </p>
+            </div>
+            <button
+              onClick={() => openDeleteModal('timbrature')}
+              className="bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-xs py-2.5 px-4 rounded-xl border border-red-200 transition-colors w-full text-center"
+            >
+              Svuota Storico Timbrature
+            </button>
+          </div>
+
+          <div className="border border-red-100 rounded-xl p-4 flex flex-col justify-between space-y-4 bg-white/50">
+            <div>
+              <h4 className="font-bold text-red-950 text-sm">Resetta l'intero database</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                Cancella completamente sia l'anagrafica degli utenti sia tutti i log delle timbrature. Ritorna a uno stato iniziale vuoto.
+              </p>
+            </div>
+            <button
+              onClick={() => openDeleteModal('all')}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs py-2.5 px-4 rounded-xl shadow-sm transition-colors w-full text-center"
+            >
+              Cancella Utenti e Timbrature (Reset Totale)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Cancellazione Sicura */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-scaleIn">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-red-50/20">
+              <h3 className="text-xl font-bold text-red-900 flex items-center space-x-2">
+                <AlertTriangle className="text-red-600" />
+                <span>Cancellazione Sicura</span>
+              </h3>
+              <button 
+                onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); setBackupDownloaded(false); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800 text-xs space-y-2">
+                <div className="font-bold text-sm text-amber-900 flex items-center space-x-1.5">
+                  <span>💡 Raccomandazione importante:</span>
+                </div>
+                <p>
+                  Ti consigliamo caldamente di scaricare un backup locale prima di procedere. Se qualcosa va storto o hai bisogno di recuperare i dati in futuro, potrai caricarli nuovamente da qui.
+                </p>
+                <button
+                  onClick={() => {
+                    handleExportBackup();
+                    setBackupDownloaded(true);
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1.5 mt-1"
+                >
+                  <Download size={14} />
+                  <span>Scarica Backup Adesso</span>
+                </button>
+              </div>
+
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {deleteTarget === 'timbrature' ? (
+                  <>Stai per eliminare <strong>definitivamente tutte le timbrature</strong>. I membri dello staff rimarranno registrati, ma le loro ore verranno azzerate.</>
+                ) : (
+                  <>Stai per eseguire un <strong>reset completo del database</strong>, cancellando tutti i membri dello staff e lo storico di ogni transito.</>
+                )}
+              </p>
+
+              <div className="space-y-3 pt-2">
+                <label className="flex items-start space-x-2 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={backupDownloaded}
+                    onChange={(e) => setBackupDownloaded(e.target.checked)}
+                    className="mt-1 h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                  <span className="text-xs text-gray-500 font-medium">
+                    Confermo di aver salvato un backup o di non averne bisogno
+                  </span>
+                </label>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Digita <span className="font-bold text-red-600">{deleteTarget === 'timbrature' ? 'ELIMINA LOG' : 'RESETTA TUTTO'}</span> per confermare:
+                  </label>
+                  <input 
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder={deleteTarget === 'timbrature' ? 'ELIMINA LOG' : 'RESETTA TUTTO'}
+                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-sm font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
+              <button 
+                onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); setBackupDownloaded(false); }}
+                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors text-sm"
+              >
+                Annulla
+              </button>
+              <button 
+                onClick={handleExecuteDelete}
+                disabled={!backupDownloaded || deleteConfirmText.trim() !== (deleteTarget === 'timbrature' ? 'ELIMINA LOG' : 'RESETTA TUTTO') || isProcessing}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 text-sm"
+              >
+                {isProcessing ? 'Cancellazione...' : 'Conferma ed Elimina'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
