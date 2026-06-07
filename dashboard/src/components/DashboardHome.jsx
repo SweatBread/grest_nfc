@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { nfcService } from '../services/nfcService';
 import { db, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit, doc, updateDoc, deleteDoc, Timestamp } from '../firebase';
-import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock, Loader2, Trash2, Lock, KeyRound } from 'lucide-react';
+import { LogIn, LogOut, AlertCircle, CheckCircle2, Users, Power, Edit2, X, Clock, Loader2, Trash2, Lock, KeyRound, Smartphone } from 'lucide-react';
 import { format, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -12,7 +12,7 @@ export default function DashboardHome() {
   const [notification, setNotification] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Nuovi stati per Uscita Automatica, Modifica, Eliminazione e PIN Prompt
+  // Nuovi stati per Uscita Automatica, Modifica, Eliminazione, PIN Prompt e NFC
   const [isClosingDay, setIsClosingDay] = useState(false);
   const [closeDayTime, setCloseDayTime] = useState("16:30");
   const [editingLog, setEditingLog] = useState(null);
@@ -22,6 +22,7 @@ export default function DashboardHome() {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(null);
   const [deletingLog, setDeletingLog] = useState(null);
+  const [authMethod, setAuthMethod] = useState('nfc'); // 'nfc' | 'pin'
 
   // Cooldown del lettore NFC per prevenire doppie timbrature
   const [cooldown, setCooldown] = useState(0);
@@ -346,12 +347,19 @@ export default function DashboardHome() {
     }
   };
 
+  const triggerPinPrompt = (type, log) => {
+    setPinPrompt({ type, log });
+    setAuthMethod('nfc');
+    setPinInput('');
+    setPinError(null);
+  };
+
   const handleEditClick = (log) => {
-    setPinPrompt({ type: 'edit', log });
+    triggerPinPrompt('edit', log);
   };
 
   const handleDeleteClick = (log) => {
-    setPinPrompt({ type: 'delete', log });
+    triggerPinPrompt('delete', log);
   };
 
   const handlePinNumberClick = (num) => {
@@ -404,6 +412,15 @@ export default function DashboardHome() {
     if (!pinPrompt) return;
 
     const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setPinPrompt(null);
+        setPinInput('');
+        setPinError(null);
+        return;
+      }
+
+      if (authMethod !== 'pin') return;
+
       if (e.key >= '0' && e.key <= '9') {
         setPinError(null);
         if (pinInput.length >= 4) return;
@@ -428,16 +445,12 @@ export default function DashboardHome() {
         }
       } else if (e.key === 'Backspace') {
         setPinInput(prev => prev.slice(0, -1));
-      } else if (e.key === 'Escape') {
-        setPinPrompt(null);
-        setPinInput('');
-        setPinError(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pinPrompt, pinInput]);
+  }, [pinPrompt, pinInput, authMethod]);
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
@@ -603,48 +616,126 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* Modal Prompt PIN Autorizzazione */}
+      {/* Modal Prompt PIN/NFC Autorizzazione */}
       {pinPrompt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden text-white p-6 flex flex-col items-center text-center space-y-6">
-            <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 shadow-lg">
-              <Lock size={22} className="text-indigo-400" />
+            
+            {/* Header info */}
+            <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+              <Lock className="text-blue-400" size={14} />
+              <span className="text-[10px] font-bold text-slate-300 tracking-wider uppercase">Autorizzazione Richiesta</span>
             </div>
 
-            <div className="space-y-1">
-              <h3 className="text-xl font-bold tracking-tight">Autorizzazione Admin</h3>
-              <p className="text-slate-400 text-xs px-4">
-                Avvicina il braccialetto di un <strong className="text-indigo-400 font-bold">Responsabile</strong> o usa il PIN di sblocco
-              </p>
-              <p className="text-slate-500 text-[10px] px-4 pt-1">
-                Operazione: {pinPrompt.type === 'edit' ? 'modifica' : 'eliminazione'} di {pinPrompt.log.nome_completo}
-              </p>
+            {authMethod === 'nfc' ? (
+              /* MODALITÀ NFC */
+              <div className="flex flex-col items-center space-y-6 w-full animate-fadeIn">
+                <div className="relative my-2">
+                  {/* Cerchi pulsanti radar */}
+                  <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping scale-150 duration-1000" />
+                  <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping scale-200 duration-1500" />
+                  
+                  <div className="relative w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center border border-white/20 shadow-xl">
+                    <Smartphone size={32} className="text-white animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold tracking-tight">Sblocco con Braccialetto</h3>
+                  <p className="text-slate-400 text-xs px-2 leading-relaxed">
+                    Avvicina il braccialetto di un <strong className="text-indigo-400 font-bold">Responsabile</strong> al lettore per autorizzare l'operazione.
+                  </p>
+                  <p className="text-slate-500 text-[10px] italic">
+                    Operazione: {pinPrompt.type === 'edit' ? 'modifica' : 'eliminazione'} di {pinPrompt.log.nome_completo}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* MODALITÀ PIN */
+              <div className="flex flex-col items-center space-y-4 w-full animate-fadeIn">
+                <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 shadow-lg">
+                  <KeyRound size={22} className="text-indigo-400" />
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold tracking-tight">PIN di Backup</h3>
+                  <p className="text-slate-400 text-[11px]">Inserisci il codice di sblocco amministratore</p>
+                  <p className="text-slate-500 text-[10px] italic">
+                    Operazione: {pinPrompt.type === 'edit' ? 'modifica' : 'eliminazione'} di {pinPrompt.log.nome_completo}
+                  </p>
+                </div>
+
+                {/* Indicatori PIN (pallini) */}
+                <div className="flex space-x-4 my-1">
+                  {[0, 1, 2, 3].map((index) => (
+                    <div 
+                      key={index}
+                      className={`w-3.5 h-3.5 rounded-full border border-slate-700 transition-all duration-200 ${
+                        pinInput.length > index ? 'bg-indigo-500 border-indigo-400 scale-110 shadow-md shadow-indigo-500/30' : 'bg-slate-800'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Keypad */}
+                <div className="grid grid-cols-3 gap-2 max-w-[210px] w-full pt-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handlePinNumberClick(num.toString())}
+                      className="w-14 h-14 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 active:scale-95 text-lg font-bold rounded-full border border-slate-800 flex items-center justify-center transition-all duration-150"
+                    >
+                      {num}
+                    </button>
+                  ))}
+                  <div /> {/* Spazio vuoto */}
+                  <button
+                    key={0}
+                    type="button"
+                    onClick={() => handlePinNumberClick('0')}
+                    className="w-14 h-14 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 active:scale-95 text-lg font-bold rounded-full border border-slate-800 flex items-center justify-center transition-all duration-150"
+                  >
+                    0
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePinBackspace}
+                    disabled={pinInput.length === 0}
+                    className="w-14 h-14 text-slate-400 disabled:opacity-30 rounded-full flex items-center justify-center transition-opacity"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Error Container */}
+            <div className="h-6 text-xs text-red-400 font-semibold">
+              {pinError && <span>{pinError}</span>}
             </div>
 
-            {/* Indicatori PIN (pallini) */}
-            <div className="flex space-x-4 my-2">
-              {[0, 1, 2, 3].map((index) => (
-                <div 
-                  key={index}
-                  className={`w-4 h-4 rounded-full border border-slate-700 transition-all duration-200 ${
-                    pinInput.length > index ? 'bg-indigo-500 border-indigo-400 scale-110 shadow-md shadow-indigo-500/30' : 'bg-slate-800'
-                  }`}
-                />
-              ))}
-            </div>
-
-            {/* Keypad */}
-            <div className="grid grid-cols-3 gap-2 max-w-[240px] w-full">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+            {/* Footer Buttons */}
+            <div className="flex flex-col space-y-2 w-full pt-2 border-t border-slate-800">
+              {authMethod === 'nfc' ? (
                 <button
-                  key={num}
                   type="button"
-                  onClick={() => handlePinNumberClick(num.toString())}
-                  className="w-16 h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 active:scale-95 text-xl font-bold rounded-full border border-slate-800 flex items-center justify-center transition-all duration-150"
+                  onClick={() => { setAuthMethod('pin'); setPinError(null); }}
+                  className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white py-2.5 rounded-xl border border-slate-700/60 shadow-md transition-all text-xs font-semibold"
                 >
-                  {num}
+                  <KeyRound size={14} />
+                  <span>Sblocca con PIN di Backup</span>
                 </button>
-              ))}
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod('nfc'); setPinError(null); setPinInput(''); }}
+                  className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white py-2.5 rounded-xl border border-slate-700/60 shadow-md transition-all text-xs font-semibold"
+                >
+                  <Smartphone size={14} />
+                  <span>Sblocca con Braccialetto NFC</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -652,32 +743,12 @@ export default function DashboardHome() {
                   setPinInput('');
                   setPinError(null);
                 }}
-                className="w-16 h-16 text-slate-400 hover:text-white text-xs font-semibold rounded-full flex items-center justify-center transition-colors"
+                className="w-full text-slate-400 hover:text-white text-xs font-semibold py-2 transition-colors"
               >
                 Annulla
               </button>
-              <button
-                key={0}
-                type="button"
-                onClick={() => handlePinNumberClick('0')}
-                className="w-16 h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 active:scale-95 text-xl font-bold rounded-full border border-slate-800 flex items-center justify-center transition-all duration-150"
-              >
-                0
-              </button>
-              <button
-                type="button"
-                onClick={handlePinBackspace}
-                disabled={pinInput.length === 0}
-                className="w-16 h-16 text-slate-400 disabled:opacity-30 rounded-full flex items-center justify-center transition-opacity"
-              >
-                <X size={20} />
-              </button>
             </div>
 
-            {/* Error Container */}
-            <div className="h-6 text-xs text-red-400 font-semibold">
-              {pinError && <span>{pinError}</span>}
-            </div>
           </div>
         </div>
       )}
