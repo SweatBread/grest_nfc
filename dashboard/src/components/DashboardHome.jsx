@@ -360,9 +360,17 @@ export default function DashboardHome() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-sm">
                 Questa azione registrerà un'<strong>Uscita Automatica</strong> per tutti gli utenti che risultano ancora presenti oggi.
               </p>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start space-x-2 text-amber-850 text-xs">
+                <AlertCircle className="w-4.5 h-4.5 flex-shrink-0 mt-0.5 text-amber-650" />
+                <div>
+                  <span className="font-bold">Attenzione:</span> questa operazione va effettuata <strong>solo a fine giornata</strong>, dopo che tutti gli ingressi e le uscite reali dello staff sono conclusi.
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Orario Uscita Automatica</label>
                 <input 
