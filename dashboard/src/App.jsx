@@ -6,9 +6,10 @@ import UsersManager from './components/UsersManager';
 import ExportData from './components/ExportData';
 import StatsDashboard from './components/StatsDashboard';
 import HoursReport from './components/HoursReport';
+import ControlloTimbrature from './components/ControlloTimbrature';
 import AdminGate from './components/AdminGate';
 import ChangePinModal from './components/ChangePinModal';
-import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 function AdminRoute({ children, isAuthenticated, onUnlock }) {
   if (!isAuthenticated) {
@@ -79,6 +80,13 @@ function AppContent() {
               </div>
               {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
+            <Link to="/controllo-timbrature" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <ShieldAlert size={20} />
+                <span className="font-medium">Controllo Timbrature</span>
+              </div>
+              {!isAdmin && <Lock size={14} className="text-slate-400" />}
+            </Link>
             <Link to="/stats" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
               <div className="flex items-center space-x-3">
                 <BarChart2 size={20} />
@@ -137,6 +145,7 @@ function AppContent() {
           <Route path="/" element={<DashboardHome />} />
           <Route path="/users" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><UsersManager /></AdminRoute>} />
           <Route path="/hours" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><HoursReport /></AdminRoute>} />
+          <Route path="/controllo-timbrature" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><ControlloTimbrature /></AdminRoute>} />
           <Route path="/stats" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
           <Route path="/stats/:userId" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
           <Route path="/export" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><ExportData /></AdminRoute>} />
