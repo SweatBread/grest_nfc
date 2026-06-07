@@ -53,23 +53,73 @@ export default function DashboardHome() {
     };
   }, []);
 
+  // Caricamento iniziale
   useEffect(() => {
-    // Escolta gli eventi NFC
+    loadRecentLogs();
+    loadPresentCount();
+  }, []);
+
+  const processNfcAdminAuth = async (uid) => {
+    setPinError(null);
+    try {
+      const q = query(
+        collection(db, "utenti"),
+        where("nfc_uid", "==", uid),
+        where("stato", "==", "attivo")
+      );
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        setPinError("Braccialetto non registrato o utente inattivo.");
+        nfcService.sendBeep('error');
+        return;
+      }
+
+      const userDoc = snapshot.docs[0].data();
+      if (userDoc.ruolo === 'Responsabile') {
+        nfcService.sendBeep('success');
+        
+        sessionStorage.setItem('grest_admin_auth', 'true');
+        
+        const { type, log } = pinPrompt;
+        if (type === 'edit') {
+          openEditModal(log);
+        } else if (type === 'delete') {
+          setDeletingLog(log);
+        }
+        
+        setPinPrompt(null);
+        setPinInput('');
+      } else {
+        setPinError(`Accesso negato: ${userDoc.nome} ${userDoc.cognome} non è un Responsabile.`);
+        nfcService.sendBeep('error');
+      }
+    } catch (error) {
+      console.error("Errore autenticazione NFC admin:", error);
+      setPinError("Errore durante la lettura del database.");
+      nfcService.sendBeep('error');
+    }
+  };
+
+  // Gestione eventi NFC
+  useEffect(() => {
     nfcService.onNfcRead(async ({ uid }) => {
       if (isProcessing || cooldown > 0) return;
       setIsProcessing(true);
-      await processNfcScan(uid);
+      
+      if (pinPrompt) {
+        await processNfcAdminAuth(uid);
+      } else {
+        await processNfcScan(uid);
+      }
+      
       setIsProcessing(false);
     });
-
-    // Carica gli ultimi log all'avvio
-    loadRecentLogs();
-    loadPresentCount();
 
     return () => {
       nfcService.removeListeners();
     };
-  }, [isProcessing, cooldown]);
+  }, [isProcessing, cooldown, pinPrompt]);
 
   const loadRecentLogs = async () => {
     try {
@@ -576,7 +626,10 @@ export default function DashboardHome() {
             <div className="space-y-1">
               <h3 className="text-xl font-bold tracking-tight">Autorizzazione Admin</h3>
               <p className="text-slate-400 text-xs px-4">
-                Inserisci il PIN amministratore per {pinPrompt.type === 'edit' ? 'modificare' : 'eliminare'} la timbratura di <strong className="text-slate-200">{pinPrompt.log.nome_completo}</strong>
+                Avvicina il braccialetto di un <strong className="text-indigo-400 font-bold">Responsabile</strong> o usa il PIN di sblocco
+              </p>
+              <p className="text-slate-500 text-[10px] px-4 pt-1">
+                Operazione: {pinPrompt.type === 'edit' ? 'modifica' : 'eliminazione'} di {pinPrompt.log.nome_completo}
               </p>
             </div>
 
