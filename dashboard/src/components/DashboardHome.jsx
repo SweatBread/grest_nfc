@@ -243,8 +243,8 @@ export default function DashboardHome() {
             nome_completo: user.nome,
             ruolo: user.ruolo,
             timestamp: Timestamp.fromDate(exitTime),
-            tipo: "USCITA_AUTOMATICA",
-            metodo: "SISTEMA"
+            tipo: "USCITA",
+            metodo: "AUTOMATICA"
           });
           countAutoExits++;
         }
@@ -490,10 +490,15 @@ export default function DashboardHome() {
                           <LogIn size={16} className="text-emerald-500" />
                           <span className="text-emerald-700 font-medium">Entrata</span>
                         </>
-                      ) : log.tipo === 'USCITA_AUTOMATICA' ? (
+                      ) : (log.tipo === 'USCITA_AUTOMATICA' || (log.tipo === 'USCITA' && log.metodo === 'AUTOMATICA')) ? (
                         <>
                           <Clock size={16} className="text-amber-500" />
                           <span className="text-amber-700 font-medium">Uscita Automatica</span>
+                        </>
+                      ) : (log.tipo === 'USCITA' && log.metodo === 'MANUALE') ? (
+                        <>
+                          <Clock size={16} className="text-indigo-500" />
+                          <span className="text-indigo-700 font-medium">Uscita Manuale</span>
                         </>
                       ) : (
                         <>
