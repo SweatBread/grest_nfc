@@ -10,7 +10,8 @@ import {
   AlertCircle, 
   CheckCircle2, 
   ChevronRight,
-  FileDown
+  FileDown,
+  Lock
 } from 'lucide-react';
 
 export default function HelpGuide() {
