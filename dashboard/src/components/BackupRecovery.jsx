@@ -218,7 +218,7 @@ export default function BackupRecovery() {
     <div className="p-8 max-w-5xl mx-auto space-y-6 animate-fadeIn">
       <header className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 flex items-center space-x-2.5">
-          <Database className="text-indigo-650" />
+          <Database className="text-indigo-600" />
           <span>Disaster Recovery & Backup</span>
         </h2>
         <p className="text-gray-500 mt-2">
@@ -278,7 +278,7 @@ export default function BackupRecovery() {
           <button
             onClick={handleExportBackup}
             disabled={isLoading}
-            className="w-full flex items-center justify-center space-x-2 bg-emerald-650 hover:bg-emerald-750 text-white py-3 px-6 rounded-xl font-semibold transition-all shadow-sm hover:shadow disabled:opacity-50"
+            className="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-xl font-semibold transition-all shadow-sm hover:shadow disabled:opacity-50"
           >
             {isLoading ? (
               <>
@@ -298,7 +298,7 @@ export default function BackupRecovery() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4 flex-1">
             <div className="flex items-center space-x-3 text-gray-900 font-bold text-xl">
-              <Upload size={24} className="text-indigo-650" />
+              <Upload size={24} className="text-indigo-600" />
               <span>Importa / Ripristina</span>
             </div>
             <p className="text-gray-500 text-sm leading-relaxed">
@@ -366,7 +366,7 @@ export default function BackupRecovery() {
           {parsedData && (
             <div className="space-y-4 pt-4 border-t border-gray-100 animate-fadeIn">
               {/* Wipe Checkbox */}
-              <div className="flex items-start space-x-3 bg-red-50 border border-red-105 rounded-xl p-4">
+              <div className="flex items-start space-x-3 bg-red-50 border border-red-100 rounded-xl p-4">
                 <input 
                   type="checkbox" 
                   id="wipe" 
@@ -405,7 +405,7 @@ export default function BackupRecovery() {
                 className={`w-full flex items-center justify-center space-x-2 text-white py-3 px-6 rounded-xl font-semibold transition-all shadow-sm ${
                   wipeFirst 
                     ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-300' 
-                    : 'bg-indigo-650 hover:bg-indigo-750 disabled:bg-indigo-300'
+                    : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300'
                 }`}
               >
                 <Database size={20} />

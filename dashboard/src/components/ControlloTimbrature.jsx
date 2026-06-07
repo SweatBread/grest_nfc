@@ -219,7 +219,7 @@ export default function ControlloTimbrature() {
                 type="date" 
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-2 border border-gray-350 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow text-sm focus:outline-none"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow text-sm focus:outline-none"
               />
             </div>
             <div className="space-y-1">
@@ -228,7 +228,7 @@ export default function ControlloTimbrature() {
                 type="date" 
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full p-2 border border-gray-350 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow text-sm focus:outline-none"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow text-sm focus:outline-none"
               />
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function ControlloTimbrature() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3 text-amber-850 text-sm shadow-sm">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3 text-amber-800 text-sm shadow-sm">
             <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600" />
             <div>
               <p className="font-semibold text-amber-900">Rilevate mancate timbrature di uscita</p>
@@ -300,7 +300,7 @@ export default function ControlloTimbrature() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                          <div className="flex items-center space-x-2 bg-gray-50 border border-gray-250 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-shadow">
+                          <div className="flex items-center space-x-2 bg-gray-50 border border-gray-300 rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-shadow">
                             <label className="text-xs font-medium text-gray-500 pl-1">Ora Uscita:</label>
                             <input 
                               type="time" 

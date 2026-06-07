@@ -125,7 +125,7 @@ function AppContent() {
               </button>
               <button
                 onClick={handleLock}
-                className="w-full flex items-center space-x-2 text-red-600 hover:bg-red-50 p-2.5 rounded-lg text-xs font-semibold transition-colors border border-red-105"
+                className="w-full flex items-center space-x-2 text-red-600 hover:bg-red-50 p-2.5 rounded-lg text-xs font-semibold transition-colors border border-red-200"
               >
                 <Unlock size={16} />
                 <span>Blocca Area Admin</span>
