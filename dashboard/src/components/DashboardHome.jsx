@@ -79,8 +79,6 @@ export default function DashboardHome() {
       if (userDoc.ruolo === 'Responsabile') {
         nfcService.sendBeep('success');
         
-        sessionStorage.setItem('grest_admin_auth', 'true');
-        
         const { type, log } = pinPrompt;
         if (type === 'edit') {
           openEditModal(log);
@@ -349,19 +347,11 @@ export default function DashboardHome() {
   };
 
   const handleEditClick = (log) => {
-    if (sessionStorage.getItem('grest_admin_auth') === 'true') {
-      openEditModal(log);
-    } else {
-      setPinPrompt({ type: 'edit', log });
-    }
+    setPinPrompt({ type: 'edit', log });
   };
 
   const handleDeleteClick = (log) => {
-    if (sessionStorage.getItem('grest_admin_auth') === 'true') {
-      setDeletingLog(log);
-    } else {
-      setPinPrompt({ type: 'delete', log });
-    }
+    setPinPrompt({ type: 'delete', log });
   };
 
   const handlePinNumberClick = (num) => {
@@ -373,7 +363,6 @@ export default function DashboardHome() {
     if (newPin.length === 4) {
       const savedPin = localStorage.getItem('grest_admin_pin') || '1234';
       if (newPin === savedPin) {
-        sessionStorage.setItem('grest_admin_auth', 'true');
         const { type, log } = pinPrompt;
         if (type === 'edit') {
           openEditModal(log);
@@ -424,7 +413,6 @@ export default function DashboardHome() {
         if (newPin.length === 4) {
           const savedPin = localStorage.getItem('grest_admin_pin') || '1234';
           if (newPin === savedPin) {
-            sessionStorage.setItem('grest_admin_auth', 'true');
             const { type, log } = pinPrompt;
             if (type === 'edit') {
               openEditModal(log);
