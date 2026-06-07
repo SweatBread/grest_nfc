@@ -7,9 +7,10 @@ import ExportData from './components/ExportData';
 import StatsDashboard from './components/StatsDashboard';
 import HoursReport from './components/HoursReport';
 import ControlloTimbrature from './components/ControlloTimbrature';
+import BackupRecovery from './components/BackupRecovery';
 import AdminGate from './components/AdminGate';
 import ChangePinModal from './components/ChangePinModal';
-import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, FileDown, BarChart2, Clock, Lock, Unlock, KeyRound, CheckCircle2, ShieldAlert, Database } from 'lucide-react';
 
 function AdminRoute({ children, isAuthenticated, onUnlock }) {
   if (!isAuthenticated) {
@@ -101,6 +102,13 @@ function AppContent() {
               </div>
               {!isAdmin && <Lock size={14} className="text-slate-400" />}
             </Link>
+            <Link to="/backup" className="flex items-center justify-between text-gray-700 p-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
+              <div className="flex items-center space-x-3">
+                <Database size={20} />
+                <span className="font-medium">Backup e Ripristino</span>
+              </div>
+              {!isAdmin && <Lock size={14} className="text-slate-400" />}
+            </Link>
           </nav>
         </div>
         
@@ -149,6 +157,7 @@ function AppContent() {
           <Route path="/stats" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
           <Route path="/stats/:userId" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><StatsDashboard /></AdminRoute>} />
           <Route path="/export" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><ExportData /></AdminRoute>} />
+          <Route path="/backup" element={<AdminRoute isAuthenticated={isAdmin} onUnlock={() => setAdminAuth(true)}><BackupRecovery /></AdminRoute>} />
         </Routes>
       </main>
 

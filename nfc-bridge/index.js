@@ -17,6 +17,23 @@ let activeReader = null;
 let nfc = null;
 let csharpChild = null;
 
+// Helper per salvare i transiti NFC in un file di log locale (Disaster Recovery)
+const logScanLocally = (uid) => {
+  try {
+    const backupsDir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+    const logPath = path.join(backupsDir, 'timbrature_nfc_raw.log');
+    const timestamp = new Date().toISOString();
+    const logLine = `${timestamp},${uid}\n`;
+    fs.appendFileSync(logPath, logLine, 'utf8');
+    console.log(`[Backup Locale] Scansione salvata su disco: ${uid}`);
+  } catch (err) {
+    console.error(`[Backup Locale] Errore durante il salvataggio locale:`, err.message);
+  }
+};
+
 // --- Server HTTP per la Dashboard ---
 const PUBLIC_DIR = path.join(__dirname, '../dashboard/dist');
 
@@ -165,6 +182,7 @@ function startCSharpBridge() {
     } else if (line.startsWith('CARD_DETECTED:')) {
       const uid = line.substring('CARD_DETECTED:'.length);
       console.log(`[C# NFC] Tessera letta, UID: ${uid}`);
+      logScanLocally(uid);
       if (!mockMode) io.emit('nfc_read', { uid });
     } else {
       // Altri log di debug dall'eseguibile C#
@@ -206,6 +224,7 @@ if (!isMockForced) {
 
       reader.on('card', card => {
         console.log(`[NFC] Carta rilevata, UID: ${card.uid}`);
+        logScanLocally(card.uid);
         if (!mockMode) io.emit('nfc_read', { uid: card.uid });
       });
 

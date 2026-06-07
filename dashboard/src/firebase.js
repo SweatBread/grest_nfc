@@ -8,6 +8,7 @@ import {
   query, 
   where, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc,
   doc, 
@@ -35,4 +36,4 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
-export { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, getDoc, serverTimestamp, Timestamp, orderBy, limit };
+export { db, collection, getDocs, query, where, addDoc, setDoc, updateDoc, deleteDoc, doc, getDoc, serverTimestamp, Timestamp, orderBy, limit };
