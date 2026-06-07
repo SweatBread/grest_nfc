@@ -13,6 +13,22 @@ export default function ControlloTimbrature() {
   const [anomaliesByDay, setAnomaliesByDay] = useState([]);
   const [exitTimes, setExitTimes] = useState({});
 
+  // Stati per la registrazione manuale
+  const [usersList, setUsersList] = useState([]);
+  const [showManualForm, setShowManualForm] = useState(false);
+  
+  // Campi del form
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [manualType, setManualType] = useState('ENTRATA');
+  const [manualDate, setManualDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [manualTime, setManualTime] = useState(format(new Date(), 'HH:mm'));
+  
+  // Timbrature esistenti per l'utente selezionato nella data selezionata
+  const [existingLogs, setExistingLogs] = useState([]);
+  const [isLoadingExistingLogs, setIsLoadingExistingLogs] = useState(false);
+
   const showNotification = (message, type) => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
@@ -119,6 +135,125 @@ export default function ControlloTimbrature() {
     loadAnomalies();
   }, [startDate, endDate]);
 
+  const loadUsers = async () => {
+    try {
+      const q = query(collection(db, "utenti"), where("stato", "==", "attivo"));
+      const querySnapshot = await getDocs(q);
+      const list = querySnapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        nome: docSnap.data().nome,
+        cognome: docSnap.data().cognome,
+        nomeCompleto: `${docSnap.data().nome} ${docSnap.data().cognome}`,
+        ruolo: docSnap.data().ruolo
+      }));
+      list.sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto));
+      setUsersList(list);
+    } catch (error) {
+      console.error("Errore caricamento utenti:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  useEffect(() => {
+    const checkExistingLogs = async () => {
+      if (!selectedUser) {
+        setExistingLogs([]);
+        return;
+      }
+
+      // Se non specificata, usa la data odierna come default
+      const targetDateStr = manualDate || format(new Date(), 'yyyy-MM-dd');
+      const parsedDate = new Date(targetDateStr);
+      if (isNaN(parsedDate.getTime())) {
+        setExistingLogs([]);
+        return;
+      }
+
+      try {
+        setIsLoadingExistingLogs(true);
+        const start = startOfDay(parsedDate);
+        const end = endOfDay(parsedDate);
+
+        const q = query(
+          collection(db, "timbrature"),
+          where("utente_id", "==", selectedUser.id),
+          where("timestamp", ">=", start),
+          where("timestamp", "<=", end),
+          orderBy("timestamp", "asc")
+        );
+
+        const querySnapshot = await getDocs(q);
+        const logs = querySnapshot.docs.map(docSnap => ({
+          id: docSnap.id,
+          ...docSnap.data()
+        }));
+        setExistingLogs(logs);
+      } catch (err) {
+        console.error("Errore caricamento timbrature esistenti:", err);
+      } finally {
+        setIsLoadingExistingLogs(false);
+      }
+    };
+
+    checkExistingLogs();
+  }, [selectedUser, manualDate]);
+
+  const handleSaveManualLog = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) {
+      showNotification("Seleziona prima un utente dallo staff!", "error");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      
+      const dateToUse = manualDate || format(new Date(), 'yyyy-MM-dd');
+      const timeToUse = manualTime || format(new Date(), 'HH:mm');
+
+      const [year, month, day] = dateToUse.split('-').map(Number);
+      const [hours, minutes] = timeToUse.split(':').map(Number);
+      const targetTimestamp = new Date(year, month - 1, day, hours, minutes, 0);
+
+      if (isNaN(targetTimestamp.getTime())) {
+        showNotification("La data o l'orario inserito non sono validi.", "error");
+        setIsProcessing(false);
+        return;
+      }
+
+      await addDoc(collection(db, "timbrature"), {
+        utente_id: selectedUser.id,
+        nome_completo: selectedUser.nomeCompleto,
+        ruolo: selectedUser.ruolo,
+        timestamp: Timestamp.fromDate(targetTimestamp),
+        tipo: manualType,
+        metodo: "MANUALE"
+      });
+
+      showNotification(`Timbratura manuale di ${manualType.toLowerCase()} registrata per ${selectedUser.nomeCompleto}.`, "success");
+      
+      // Resetta il form
+      setSelectedUser(null);
+      setSearchQuery('');
+      setManualType('ENTRATA');
+      setManualDate(format(new Date(), 'yyyy-MM-dd'));
+      setManualTime(format(new Date(), 'HH:mm'));
+      setExistingLogs([]);
+
+      // Ricarica le anomalie
+      await loadAnomalies();
+    } catch (error) {
+      console.error("Errore salvataggio timbratura manuale:", error);
+      showNotification("Errore durante il salvataggio della timbratura.", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+
   const handleTimeChange = (dateKey, userId, value) => {
     setExitTimes(prev => ({
       ...prev,
@@ -183,12 +318,201 @@ export default function ControlloTimbrature() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6 animate-fadeIn">
-      <header className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Controllo Timbrature</h2>
-        <p className="text-gray-500 mt-2">
-          Rileva e correggi le mancate timbrature di uscita dello staff, organizzate per singola giornata.
-        </p>
+      <header className="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Controllo Timbrature</h2>
+          <p className="text-gray-500 mt-2">
+            Rileva e correggi le mancate timbrature di uscita dello staff, organizzate per singola giornata.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowManualForm(!showManualForm)}
+          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl shadow-sm transition-colors font-medium text-sm"
+        >
+          <Clock size={18} />
+          <span>{showManualForm ? 'Nascondi Inserimento' : 'Registra Timbratura Manuale'}</span>
+        </button>
       </header>
+
+      {/* Form di Timbratura Manuale (Dimenticanze braccialetto) */}
+      {showManualForm && (
+        <form onSubmit={handleSaveManualLog} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6 shadow-sm animate-fadeIn">
+          <div className="flex items-center space-x-2 text-gray-800 font-bold text-base pb-3 border-b border-gray-100">
+            <Clock size={20} className="text-blue-500" />
+            <span>Inserisci Nuova Timbratura Manuale</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Cerca Utente Autocomplete */}
+            <div className="space-y-1 relative">
+              <label className="block text-xs font-bold text-gray-700">Utente dello Staff</label>
+              
+              {selectedUser ? (
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl mt-1">
+                  <div>
+                    <p className="font-bold text-sm text-blue-900 leading-tight">{selectedUser.nomeCompleto}</p>
+                    <p className="text-xs text-blue-500 mt-0.5">{selectedUser.ruolo}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedUser(null); setSearchQuery(''); setExistingLogs([]); }}
+                    className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-1 bg-white border border-blue-200 rounded-lg transition-colors"
+                  >
+                    Modifica
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1">
+                  <input 
+                    type="text"
+                    placeholder="Scrivi il nome per cercare..."
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setIsDropdownOpen(true); }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    className="w-full p-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white"
+                  />
+                  
+                  {isDropdownOpen && searchQuery.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg z-50 divide-y divide-gray-50">
+                      {usersList.filter(u => u.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+                        <div className="p-3 text-gray-400 text-xs italic">Nessun utente trovato</div>
+                      ) : (
+                        usersList
+                          .filter(u => u.nomeCompleto.toLowerCase().includes(searchQuery.toLowerCase()))
+                          .map(u => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setIsDropdownOpen(false);
+                              }}
+                              className="w-full text-left p-3 hover:bg-blue-50/50 flex flex-col transition-colors"
+                            >
+                              <span className="font-semibold text-sm text-gray-800">{u.nomeCompleto}</span>
+                              <span className="text-xs text-gray-400">{u.ruolo}</span>
+                            </button>
+                          ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Tipo Transito */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700">Tipo Accesso</label>
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-xl border border-gray-200 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setManualType('ENTRATA')}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                    manualType === 'ENTRATA' 
+                      ? 'bg-white text-emerald-700 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Entrata
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManualType('USCITA')}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                    manualType === 'USCITA' 
+                      ? 'bg-white text-orange-700 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Uscita
+                </button>
+              </div>
+            </div>
+
+            {/* Data e Ora */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-gray-700">Data</label>
+                  <span className="text-[10px] text-gray-400">Default: oggi</span>
+                </div>
+                <input 
+                  type="date" 
+                  value={manualDate}
+                  onChange={(e) => setManualDate(e.target.value)}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white mt-1"
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-gray-700">Ora</label>
+                  <span className="text-[10px] text-gray-400">Default: ora corr.</span>
+                </div>
+                <input 
+                  type="time" 
+                  value={manualTime}
+                  onChange={(e) => setManualTime(e.target.value)}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white mt-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SEZIONE RIVELAZIONE TIMBRATURE ESISTENTI (Disaster prevention) */}
+          {selectedUser && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2 animate-fadeIn">
+              <p className="text-xs font-bold text-gray-700 flex items-center space-x-1.5">
+                <Clock size={14} className="text-blue-500" />
+                <span>
+                  Transiti registrati per {selectedUser.nomeCompleto} il {(() => {
+                    const targetDateStr = manualDate || format(new Date(), 'yyyy-MM-dd');
+                    const parsedDate = new Date(targetDateStr);
+                    return isNaN(parsedDate.getTime()) ? '' : format(parsedDate, 'dd/MM/yyyy');
+                  })()}:
+                </span>
+              </p>
+              
+              {isLoadingExistingLogs ? (
+                <p className="text-xs text-gray-400 italic">Verifica in corso...</p>
+              ) : existingLogs.length === 0 ? (
+                <p className="text-xs text-emerald-600 font-semibold flex items-center space-x-1">
+                  <span>✓ Nessun transito registrato in questa data. Operazione sicura.</span>
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {existingLogs.map((log) => (
+                    <span 
+                      key={log.id} 
+                      className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                        log.tipo === 'ENTRATA' 
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
+                          : log.tipo === 'USCITA_AUTOMATICA' || log.metodo === 'AUTOMATICA'
+                            ? 'bg-amber-50 text-amber-800 border-amber-100'
+                            : 'bg-orange-50 text-orange-800 border-orange-100'
+                      }`}
+                    >
+                      <span className="font-bold">
+                        {log.tipo === 'ENTRATA' ? 'Entrata' : log.metodo === 'AUTOMATICA' || log.tipo === 'USCITA_AUTOMATICA' ? 'Auto Uscita' : 'Uscita'}
+                      </span>
+                      <span>alle {format(log.timestamp.toDate(), 'HH:mm')} ({log.metodo || 'NFC'})</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2 border-t border-gray-100">
+            <button
+              type="submit"
+              disabled={!selectedUser || isProcessing}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-50 text-sm"
+            >
+              {isProcessing ? 'Registrazione...' : 'Salva Timbratura Manuale'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Notification Banner */}
       {notification && (
